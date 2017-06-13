@@ -6,7 +6,7 @@ The (.NET C#, Windows 10) controller connects to the Arduino via serial or ether
 
 ![Screenshot of Controller](Controller.png?raw=true)
 
-Run DogWaterDispenser.exe with a '-serial' argument (i.e. "DogWaterDispenser.exe -serial") when a USB is connected to the Arduino. By default, the program communicates with the Arduino via ethernet, on 10.1.1.120 but you can change this in the DogWaterDispenser.ino file.
+Run DogWaterDispenser.exe with a '-serial' argument (i.e. "DogWaterDispenser.exe -serial") when a USB is connected to the Arduino. By default, the program communicates with the Arduino via ethernet, on 10.1.1.200 but you can change this in the DogWaterDispenser.ino file.
 
 The hardware is configured as follows:
 
