@@ -106,6 +106,8 @@
     <None Include="Resources\Dispenser.ico" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Circuit.png" />
+    <Content Include="Controller.png" />
     <Content Include="Dispenser.ico" />
     <None Include="Resources\Background.png" />
   </ItemGroup>
