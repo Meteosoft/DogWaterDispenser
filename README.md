@@ -11,3 +11,4 @@ Run DogWaterDispenser.exe with a '-serial' argument (i.e. "DogWaterDispenser.exe
 The hardware is configured as follows:
 
 ![Hardware](Circuit.png?raw=true)
+
