@@ -1,0 +1,15 @@
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\DispenserController.exe.config
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\DispenserController.exe
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\DispenserController.pdb
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\Meteosoft.Common.dll
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\Meteosoft.MessageLogger.dll
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\RTFLib.dll
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\ZedGraph.dll
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\RTFLib.xml
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\ZedGraph.xml
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.csprojResolveAssemblyReference.cache
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.DogDispenserController.resources
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.Properties.Resources.resources
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.csproj.GenerateResource.Cache
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.exe
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.pdb

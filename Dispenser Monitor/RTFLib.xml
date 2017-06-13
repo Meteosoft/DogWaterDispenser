@@ -1,0 +1,414 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>RTFLib</name>
+    </assembly>
+    <members>
+        <member name="T:GDF.GDFBuilder">
+            <summary>
+            Graphics Based RichText Builder
+            </summary>
+        </member>
+        <member name="M:GDF.GDFBuilder.#ctor(GDF.GDFPageManager)">
+            <summary>
+            Initializes a new instance of the <see cref="T:GDF.GDFBuilder"/> class.
+            </summary>
+            <param name="manager">The manager.</param>
+        </member>
+        <member name="M:GDF.GDFBuilder.AppendInternal(System.String)">
+            <summary>
+            Appends the internal.
+            </summary>
+            <param name="value">The value.</param>
+        </member>
+        <member name="T:GDF.GDFBuilder.UnWrapped">
+            <summary>
+             Persists Formatting Changes on an GDFBuilder
+            </summary>
+        </member>
+        <member name="T:GDF.GDFBuilder.GDFCell">
+            <summary>
+            Cell within Table Row
+            </summary>
+        </member>
+        <member name="T:GDF.GDFBuilder.GDFRow">
+            <summary>
+            Table Row
+            </summary>
+        </member>
+        <member name="T:GDF.GDFDisplayBox">
+            <summary>
+            Displays GDF Output
+            </summary>
+        </member>
+        <member name="F:GDF.GDFDisplayBox.components">
+            <summary> 
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="M:GDF.GDFDisplayBox.Dispose(System.Boolean)">
+            <summary> 
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:GDF.GDFDisplayBox.InitializeComponent">
+            <summary> 
+            Required method for Designer support - do not modify 
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="T:GDF.GDFPage">
+            <summary>
+            Page of GDF Output
+            </summary>
+        </member>
+        <member name="T:GDF.GDFPageManager">
+            <summary>
+            Manages GDFPages
+            </summary>
+        </member>
+        <member name="M:RTF.RTFBuilderParser.TokenAction(System.IO.StringReader)">
+            <summary>
+            runs when / found
+            </summary>
+            <param name="sr"></param>
+            <returns></returns>
+        </member>
+        <member name="T:RTF.IBuilderContent">
+            <summary>
+            Exposes an underlying RTFBuilderbase
+            </summary>
+        </member>
+        <member name="T:RTF.IRTFRow">
+            <summary>
+            Row Interface
+            </summary>
+        </member>
+        <member name="F:RTF.RTFAlignment.BottomCenter">
+            <summary>Content is vertically aligned at the bottom, and horizontally aligned at the center.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.BottomLeft">
+            <summary>Content is vertically aligned at the bottom, and horizontally aligned on the left.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.BottomRight">
+            <summary>Content is vertically aligned at the bottom, and horizontally aligned on the right.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.MiddleCenter">
+            <summary>Content is vertically aligned in the middle, and horizontally aligned at the center.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.MiddleLeft">
+            <summary>Content is vertically aligned in the middle, and horizontally aligned on the left.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.MiddleRight">
+            <summary>Content is vertically aligned in the middle, and horizontally aligned on the right.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.TopCenter">
+            <summary>Content is vertically aligned at the top, and horizontally aligned at the center.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.TopLeft">
+            <summary>Content is vertically aligned at the top, and horizontally aligned on the left.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="F:RTF.RTFAlignment.TopRight">
+            <summary>Content is vertically aligned at the top, and horizontally aligned on the right.</summary>
+            <filterpriority>1</filterpriority>
+        </member>
+        <member name="T:RTF.RTFBuilder">
+            <summary>
+            Rich Text Generator
+            </summary>
+        </member>
+        <member name="M:RTF.RTFBuilder.CheckChar(System.String)">
+            <summary>
+            Checks the char.
+            </summary>
+            <param name="value">The value.</param>
+            <returns></returns>
+        </member>
+        <member name="T:RTF.RTFBuilder.RTFFormatWrap">
+            <summary>
+            Wraps RTFBuilderbase for formatting changes allowing injection of appropriate rtf codes to revert format after each Append (string) call
+            </summary>
+        </member>
+        <member name="T:RTF.RTFBuilder.RTFParaWrap">
+            <summary>
+            Wraps RtfBuilderbase injecting appropriate rtf codes after paragraph append 
+            </summary>
+        </member>
+        <member name="T:RTF.RTFBuilder.RTFBuilderUnWrapped">
+            <summary>
+            Cancels persistent Formatting Changes on an unwrapped RtfBuilder
+            Exposed by the FormatLock on RtfBuilderbase
+            </summary>
+        </member>
+        <member name="T:RTF.RTFBuilder.RTFCell">
+            <summary>
+            Cell In Table Row
+            </summary>
+        </member>
+        <member name="T:RTF.RTFBuilder.RTFCellDefinitionBuilder">
+            <summary>
+            Injects Cell Rtf Codes
+            </summary>
+        </member>
+        <member name="M:RTF.RTFBuilder.RTFImage.GdipEmfToWmfBits(System.IntPtr,System.UInt32,System.Byte[],System.Int32,RTF.RTFBuilder.RTFImage.EmfToWmfBitsFlags)">
+            <summary>
+            Use the EmfToWmfBits function in the GDI+ specification to convert a 
+            Enhanced Metafile to a Windows Metafile
+            </summary>
+            <param name="_hEmf">
+            A handle to the Enhanced Metafile to be converted
+            </param>
+            <param name="_bufferSize">
+            The size of the buffer used to store the Windows Metafile bits returned
+            </param>
+            <param name="_buffer">
+            An array of bytes used to hold the Windows Metafile bits returned
+            </param>
+            <param name="_mappingMode">
+            The mapping mode of the image.  This control uses MM_ANISOTROPIC.
+            </param>
+            <param name="_flags">
+            Flags used to specify the format of the Windows Metafile returned
+            </param>
+        </member>
+        <member name="M:RTF.RTFBuilder.RTFImage.WriteImagePrefix(System.Drawing.Image,System.Single,System.Single)">
+            <summary>
+            Creates the RTF control string that describes the image being inserted.
+            This description (in this case) specifies that the image is an
+            MM_ANISOTROPIC metafile, meaning that both X and Y axes can be scaled
+            independently.  The control string also gives the images current dimensions,
+            and its target dimensions, so if you want to control the size of the
+            image being inserted, this would be the place to do it. The prefix should
+            have the form ...
+            
+            {\pict\wmetafile8\picw[A]\pich[B]\picwgoal[C]\pichgoal[D]
+            
+            where ...
+            
+            A	= current width of the metafile in hundredths of millimeters (0.01mm)
+            	= Image Width in Inches * Number of (0.01mm) per inch
+            	= (Image Width in Pixels / Graphics Context's Horizontal Resolution) * 2540
+            	= (Image Width in Pixels / Graphics.DpiX) * 2540
+            
+            B	= current height of the metafile in hundredths of millimeters (0.01mm)
+            	= Image Height in Inches * Number of (0.01mm) per inch
+            	= (Image Height in Pixels / Graphics Context's Vertical Resolution) * 2540
+            	= (Image Height in Pixels / Graphics.DpiX) * 2540
+            
+            C	= target width of the metafile in twips
+            	= Image Width in Inches * Number of twips per inch
+            	= (Image Width in Pixels / Graphics Context's Horizontal Resolution) * 1440
+            	= (Image Width in Pixels / Graphics.DpiX) * 1440
+            
+            D	= target height of the metafile in twips
+            	= Image Height in Inches * Number of twips per inch
+            	= (Image Height in Pixels / Graphics Context's Horizontal Resolution) * 1440
+            	= (Image Height in Pixels / Graphics.DpiX) * 1440
+            
+            </summary>
+            <remarks>
+            The Graphics Context's resolution is simply the current resolution at which
+            windows is being displayed.  Normally it's 96 dpi, but instead of assuming
+            I just added the code.
+            
+            According to Ken Howe at pbdr.com, "Twips are screen-independent units
+            used to ensure that the placement and proportion of screen elements in
+            your screen application are the same on all display systems."
+            
+            Units Used
+            ----------
+            1 Twip = 1/20 Point
+            1 Point = 1/72 Inch
+            1 Twip = 1/1440 Inch
+            
+            1 Inch = 2.54 cm
+            1 Inch = 25.4 mm
+            1 Inch = 2540 (0.01)mm
+            </remarks>
+            <param name="_image"></param>
+            <param name="xDpi"></param>
+            <param name="yDpi"></param>
+            <returns></returns>
+        </member>
+        <member name="M:RTF.RTFBuilder.RTFImage.WriteRtfImage(System.Drawing.Image)">
+            <summary>
+            Wraps the image in an Enhanced Metafile by drawing the image onto the
+            graphics context, then converts the Enhanced Metafile to a Windows
+            Metafile, and finally appends the bits of the Windows Metafile in HEX
+            to a string and returns the string.
+            </summary>
+            <param name="_image"></param>
+            <returns>
+            A string containing the bits of a Windows Metafile in HEX
+            </returns>
+        </member>
+        <member name="F:RTF.RTFBuilder.TWIPSA4">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="F:RTF.RTFBuilder.TWIPSA4V">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="T:RTF.RTFBuilder.RTFRow">
+            <summary>
+            Rich Table Row
+            </summary>
+        </member>
+        <member name="T:RTF.RTFBuilderbase">
+            <summary>
+            Base Class for RtfBuilder and GDF Builder
+            Handles format (font , fontstyle, colour) delegating string appending to derived classes. 
+            </summary>
+        </member>
+        <member name="F:RTF.RTFBuilderbase._fontTable">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="M:RTF.RTFBuilderbase.AppendRTFDocument(System.String)">
+            <summary>
+            Appends the RTF document.
+            </summary>
+            <param name="rtf">The RTF.</param>
+            <returns></returns>
+        </member>
+        <member name="M:RTF.RTFBuilderbase.IndexOfFont(RTF.RTFFont)">
+            <summary>
+            Indexes the of font.
+            </summary>
+            <param name="font">The font.</param>
+            <returns></returns>
+        </member>
+        <member name="M:RTF.RTFBuilderbase.FontStyle(System.Drawing.FontStyle)">
+            <summary>
+            Changes the Font Style.
+            </summary>
+            <param name="fontStyle">The font style.</param>
+            <returns></returns>
+        </member>
+        <member name="M:RTF.RTFBuilderbase.IndexOf(System.Drawing.Color)">
+            <summary>
+            Gets the index of the Color.
+            Important for merging ColorTables
+            </summary>
+            <param name="color">The color.</param>
+            <returns></returns>
+        </member>
+        <member name="M:RTF.RTFBuilderbase.InsertImage(System.Drawing.Image)">
+            <summary>
+            Inserts the image.
+            </summary>
+            <param name="image">The image.</param>
+            <returns></returns>
+        </member>
+        <member name="T:RTF.RTFCellDefinition">
+            <summary>
+            Definition Of Cell In Table Row
+            </summary>
+        </member>
+        <member name="P:RTF.RTFCellDefinition.Alignment">
+            <summary>
+            Gets the alignment.
+            </summary>
+            <value>The alignment.</value>
+        </member>
+        <member name="P:RTF.RTFCellDefinition.RTFBorderSide">
+            <summary>
+            Gets the RTFborderside.
+            </summary>
+            <value>The RTF border side.</value>
+        </member>
+        <member name="P:RTF.RTFCellDefinition.BorderWidth">
+            <summary>
+            Gets the width of the border.
+            </summary>
+            <value>The width of the border.</value>
+        </member>
+        <member name="P:RTF.RTFCellDefinition.BorderColor">
+            <summary>
+            Gets the color of the border.
+            </summary>
+            <value>The color of the border.</value>
+        </member>
+        <member name="P:RTF.RTFCellDefinition.CellWidthRaw">
+            <summary>
+            Gets or sets the width of the cell.
+            </summary>
+            <value>The width of the cell.</value>
+        </member>
+        <member name="P:RTF.RTFCellDefinition.X">
+            <summary>
+            Gets the X.
+            </summary>
+            <value>The X.</value>
+        </member>
+        <member name="T:RTF.RTFRowDefinition">
+            <summary>
+            Definition of Rich Table Row
+            </summary>
+        </member>
+        <member name="M:RTF.RTFRowDefinition.#ctor(System.Int32,RTF.RTFAlignment,RTF.RTFBorderSide,System.Int32,System.Drawing.Color,System.Windows.Forms.Padding)">
+            <summary>
+            Initializes a new instance of the <see cref="T:RTF.RTFRowDefinition"/> struct.
+            </summary>
+            <param name="rowWidth">Width of the row.</param>
+            <param name="alignment">The alignment.</param>
+            <param name="rTFBorderSide">The RTFBorderSide.</param>
+            <param name="borderWidth">Width of the border.</param>
+            <param name="borderColor">Color of the border.</param>
+            <param name="padding">Padding of the border.</param>
+        </member>
+        <member name="P:RTF.RTFRowDefinition.Alignment">
+            <summary>
+            Gets the alignment.
+            </summary>
+            <value>The alignment.</value>
+        </member>
+        <member name="P:RTF.RTFRowDefinition.RTFBorderSide">
+            <summary>
+            Gets the RTF border side.
+            </summary>
+            <value>The RTF border side.</value>
+        </member>
+        <member name="P:RTF.RTFRowDefinition.BorderWidth">
+            <summary>
+            Gets the width of the border.
+            </summary>
+            <value>The width of the border.</value>
+        </member>
+        <member name="P:RTF.RTFRowDefinition.BorderColor">
+            <summary>
+            Gets the color of the border.
+            </summary>
+            <value>The color of the border.</value>
+        </member>
+        <member name="P:RTF.RTFRowDefinition.RowWidth">
+            <summary>
+            Gets or sets the width of the cell.
+            </summary>
+            <value>The width of the cell.</value>
+        </member>
+        <member name="T:RTF.RTFUtil">
+            <summary>
+            A Work in Progress
+            </summary>
+        </member>
+        <member name="T:CurrentPatient.IRtfProcessor">
+            <summary>
+            Processor of RTF
+            </summary>
+        </member>
+    </members>
+</doc>
