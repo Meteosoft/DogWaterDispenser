@@ -10,7 +10,7 @@ The (.NET C#, Windows 10) controller connects to the Arduino via serial or ether
 
 ![Screenshot of Controller](Controller.png?raw=true)
 
-Run DogWaterDispenser.exe with a '-serial' argument (i.e.
+Run DogWaterDispenser.exe with a '-serial' command, i.e.
 ```sh
 DogWaterDispenser.exe -serial
 ```
