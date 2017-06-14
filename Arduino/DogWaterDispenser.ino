@@ -454,6 +454,7 @@ void CheckWaterLevel()
 			msg.concat(String(m_waterLevel));
 			msg.concat("!C"); // '!C' = "%). Filling the dispenser..."
 			SendMessageToDispenserController(LOG_INFORMATION, msg, true);
+			SendWaterLevelToController();
 			m_inletOn = true;
 		}
 	}
@@ -469,6 +470,7 @@ void CheckWaterLevel()
 			msg.concat(String(m_waterLevel));
 			msg.concat("!E"); // '!E' = "%). Turning off solenoid..."
 			SendMessageToDispenserController(LOG_INFORMATION, msg, true);
+			SendWaterLevelToController();
 			m_inletOn = false;
 		}
 	}

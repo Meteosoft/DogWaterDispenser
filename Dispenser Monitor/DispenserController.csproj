@@ -103,6 +103,7 @@
     <None Include="Dispenser.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="README.md" />
     <None Include="Resources\Dispenser.ico" />
   </ItemGroup>
   <ItemGroup>
