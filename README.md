@@ -1,6 +1,5 @@
-
-<img src="Dispenser Monitor/Dispenser.png" width="64" height="64" style="float:left;margin-right:1em" />
 # Introduction
+<img src="Dispenser Monitor/Dispenser.png" width="64" height="64" style="float:left;margin-right:1em" />
 
 An Arduino project to monitor a dog water dispenser, topping up when necessary and performing a daily flush.
 
