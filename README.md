@@ -1,8 +1,6 @@
 
 <img src="Dispenser Monitor/Dispenser.png" width="64" height="64" style="float:left;margin-right:1em" />
 
-[Meteosoft]: http://www.meteosoft.com.au/
-
 # Introduction
 An Arduino project to monitor a dog water dispenser, topping up when necessary and performing a daily flush.
 
@@ -23,5 +21,6 @@ when a USB is connected to the Arduino. By default, the program communicates wit
 ## Hardware
 The hardware is configured as follows:
 
-![Hardware](Circuit.png?raw=true)
+![Hardware]: (Circuit.png?raw=true)
 
+Other software created by Meteosoft Solutions can be seen at http://www.meteosoft.com.au/.
