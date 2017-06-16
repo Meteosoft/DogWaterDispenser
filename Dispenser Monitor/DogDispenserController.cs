@@ -50,13 +50,13 @@ namespace DispenserController
             /// <summary>Send water level reading now (for network connection)</summary>
             SEND_WATER_LEVEL_NOW,
             /// <summary>Get/Set the sensor read interval</summary>
-            WATER_LEVEL_READ_INTERVAL,
-            /// <summary>Get/Set the maximum sensor value that equates to 99%</summary>
+            WATER_LEVEL_READ_SENSOR_INTERVAL,
+            /// <summary>Get/Set the maximum sensor value that equates to 1% (higher resistance = lower water level)</summary>
             MAX_SENSOR_VALUE_SETTING,
-            /// <summary>Get/Set the minimum sensor value that equates to 1%</summary>
+            /// <summary>Get/Set the minimum sensor value that equates to 99% (lower resistance = higher water level)</summary>
             MIN_SENSOR_VALUE_SETTING,
-            /// <summary>Get/Set whether we should do an auto flush cycle</summary>
-            DO_FLUSH,
+            /// <summary>Get/Set whether we are allowed to do auto or manual flush cycles</summary>
+            ALLOW_FLUSHING,
             /// <summary>Get/Set whether the Arduino should send raw water level values</summary>
             SEND_RAW_VALUES,
             /// <summary>Invalid command</summary>
@@ -829,10 +829,10 @@ namespace DispenserController
             m_messageMap.Add("!g", "Auto flush minute is: ");
             m_messageMap.Add("!h", "Water level read interval set to: ");
             m_messageMap.Add("!i", "Water level read interval is: ");
-            m_messageMap.Add("!j", "Max Sensor Value (~99%) set to: ");
-            m_messageMap.Add("!k", "Max Sensor Value (~99%) is: ");
-            m_messageMap.Add("!l", "Min Sensor Value (~1%) set to: ");
-            m_messageMap.Add("!m", "Min Sensor Value (~1%) is: ");
+            m_messageMap.Add("!j", "Max Sensor Value (~1%) set to: ");
+            m_messageMap.Add("!k", "Max Sensor Value (~1%) is: ");
+            m_messageMap.Add("!l", "Min Sensor Value (~99%) set to: ");
+            m_messageMap.Add("!m", "Min Sensor Value (~99%) is: ");
             m_messageMap.Add("!n", "Flushing has been disabled!");
             m_messageMap.Add("!o", "Flushing has been enabled!");
             m_messageMap.Add("!p", "Send raw data is Off...");
@@ -997,9 +997,9 @@ namespace DispenserController
             if (!m_initialising)
             {
                 if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.WATER_LEVEL_READ_INTERVAL}:{numericReadInterval.Value * 1000}");
+                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.WATER_LEVEL_READ_SENSOR_INTERVAL}:{numericReadInterval.Value * 1000}");
                 else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.WATER_LEVEL_READ_INTERVAL}:{numericReadInterval.Value * 1000}");
+                    SendTCPMsgToArduino($"{(int)ArduinoCommands.WATER_LEVEL_READ_SENSOR_INTERVAL}:{numericReadInterval.Value * 1000}");
             }
         }
 
@@ -1016,9 +1016,9 @@ namespace DispenserController
             if (!m_initialising)
             {
                 if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.DO_FLUSH}:{(checkAllowFlushing.Checked ? "1" : "0")}");
+                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.ALLOW_FLUSHING}:{(checkAllowFlushing.Checked ? "1" : "0")}");
                 else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.DO_FLUSH}:{(checkAllowFlushing.Checked ? "1" : "0")}");
+                    SendTCPMsgToArduino($"{(int)ArduinoCommands.ALLOW_FLUSHING}:{(checkAllowFlushing.Checked ? "1" : "0")}");
                 buttonFlush.Enabled = checkAllowFlushing.Checked;
             }
         }

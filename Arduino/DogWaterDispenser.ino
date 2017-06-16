@@ -1,7 +1,24 @@
 /*
  Name:		DogWaterDispenser.ino
- Created:	09/05/2017 4:28:54 PM
+ Created:	09/05/2017
  Author:	Rob Munn
+
+ Regulates the water level in a dog water dispenser, and flushes the dispenser 
+ bowl of saliva and dirt once per day.
+
+ Communicates with external software (the Controller, written in C#) via serial 
+ or ethernet. All parameters are programmable via the Controller except for the 
+ ethernet IP address, which is hard-coded by default to 10.1.1.200. This can be 
+ changed in this file.
+
+ To minimise memory usage in the Arduino, all message strings are tokenised, e.g.
+	'!n' = "Flushing has been disabled!"
+ The controller will translate the token into an equivalent message before logging
+ it.
+
+ All commands to and from the Controller are in the form: COMMAND[:DATA]\n, where
+ [:DATA] is optional. The COMMAND is a number between 0 and 20 (see //COMMAND section
+ below).
 */
 
 #define INCLUDE_ETHERNET 1
@@ -36,14 +53,14 @@ EthernetClient m_client = NULL;
 #define OUTLET_RELAY_PIN 6
 // The water level sensor power pin
 #define POWER_TO_SENSOR_PIN 7
-// The inlet LED pin
+// The inlet solenoid LED pin
 #define INLET_LED_PIN 8
-// The outlet LED pin
+// The outlet solenoid LED pin
 #define OUTLET_LED_PIN 9
 // The water level sensor pin
 #define WATER_LEVEL_PIN A3
 
-// MESSAGES/COMMANDS
+// COMMANDS
 // Arduino->Controller: Initialisation
 #define INIT_CONTROLLER 0
 // Set/Get the current date/time
@@ -54,9 +71,9 @@ EthernetClient m_client = NULL;
 #define LOG_WARNING 3
 // Here is an error log message
 #define LOG_ERROR 4
-// Activate/Deactivate the inlet solinoid power relay
+// Activate/Deactivate the inlet solenoid power relay
 #define INLET_POWER_RELAY 5
-// Activate/Deactivate the outlet solinoid power relay
+// Activate/Deactivate the outlet solenoid power relay
 #define OUTLET_POWER_RELAY 6
 // Get/set the flush period
 #define FLUSH_PERIOD 7
@@ -77,79 +94,87 @@ EthernetClient m_client = NULL;
 // Send water level reading now (for network connection)
 #define SEND_WATER_LEVEL_NOW 15
 // Get/Set the sensor read interval
-#define WATER_LEVEL_READ_INTERVAL 16
-// Get/Set the maximum sensor value that equates to 99%
+#define WATER_LEVEL_READ_SENSOR_INTERVAL 16
+// Get/Set the maximum sensor value that equates to 1% (higher resistance = lower water level)
 #define MAX_SENSOR_VALUE_SETTING 17
-// Get/Set the minimum sensor value that equates to 1%
+// Get/Set the minimum sensor value that equates to 99% (lower resistance = higher water level)
 #define MIN_SENSOR_VALUE_SETTING 18
-// Get/Set whether we should do an auto flush cycle
-#define DO_FLUSH 19
+// Get/Set whether we are allowed to do auto or manual flush cycles
+#define ALLOW_FLUSHING 19
 // Get/Set whether the Arduino should send raw water level values
 #define SEND_RAW_VALUES 20
 
-// CONSTANTS
-#define LOW_MARK 60
+// INITIAL DEFAULT CONSTANTS
+// The default % below which the inlet solenoid will be switched on
+#define LOW_MARK 50
+// The default % above which the inlet solenoid will be switched off
 #define HIGH_MARK 90
+// The default hour to perform the auto flushing
 #define AUTO_FLUSH_HOUR 1
+// The default minute to perform the auto flushing
 #define AUTO_FLUSH_MINUTE 0
-#define AUTO_FLUSH_SECONDS 30
-#define READ_INTERVAL 5000
+// The default period in seconds to perform the auto and manual flushing
+#define FLUSH_SECONDS 30
+// The default interval (in ms) between sensor readings. The power to the sensor
+// is turned on for ~1sec at each interval, to minimise the effects of electrolysis
+#define READ_SENSOR_INTERVAL 5000
+// The default maximum raw sensor value that equates to 1% (empty bowl)
 #define MAX_SENSOR_VALUE 530
+// The default minimum raw sensor value that equates to 99% (full bowl)
 #define MIN_SENSOR_VALUE 390
 
 // GLOBAL VARIABLES
+// Is the inlet solenoid on? Default is initially NO
 bool m_inletOn = false;
+// Are we currently performing a flush cycle? Default is initially NO
 bool m_doingFlushCycle = false;
+// Should we send water level readings to any external software (if connected) every minute? Default is YES by default
 bool m_sendWaterLevelReadings = true;
-bool m_sentAutoFlushErrorMessage = false;
+// Should we send water level readings to any external software (if connected) every second? Default is NO by default
 bool m_sendFastWaterLevelReadings = false;
-bool m_doFlush = false;
+// Is auto or manual flushing allowed? Default is YES
+bool m_doFlush = true;
+// Should we send raw sensor readings to any external software (if connected) every second? Default is NO by default
 bool m_sendRawValues = false;
-unsigned long m_timeAutoFlushStarted = 0L;
-int m_flushPeriod = AUTO_FLUSH_SECONDS;
+
+// The default flush period
+int m_flushPeriod = FLUSH_SECONDS;
+// The default low level mark
 int m_lowLevelMark = LOW_MARK;
+// The default high level mark
 int m_highLevelMark = HIGH_MARK;
+// The default flush hour
 int m_autoFlushHour = AUTO_FLUSH_HOUR;
+// The default flush minute
 int m_autoFlushMinute = AUTO_FLUSH_MINUTE;
-int m_readInterval = READ_INTERVAL;
+// The default sensor read interval
+int m_readInterval = READ_SENSOR_INTERVAL;
+// The default minimum sensor value
 int m_minSensorReading = MIN_SENSOR_VALUE;
+// The default maximum sensor value
 int m_maxSensorReading = MAX_SENSOR_VALUE;
 
-long m_previousReadLoopMillis = 0L;	// Will store last time the read loop was run
-long m_previousFastSendMillis = 0L;	// Will store last time the fast send (water level) loop was run
-long m_previousRawSendMillis = 0L;	// Will store last time the fast send (raw water level reading) loop was run
-int m_buttonPushCounter = 0;		// Counter for the number of button presses
-int m_buttonState = 0;				// Current state of the button
-int m_lastButtonState = 0;			// Previous state of the button
-int m_waterLevel = 0;				// The last water level read
+// Internal use - to stop multiple auto-flush error messages being emitted
+bool m_sentAutoFlushErrorMessage = false;
+// Internal use - to time the flush sequence
+unsigned long m_timeAutoFlushStarted = 0L;
+// Internal use - Will store last time the read loop was run
+long m_previousReadLoopMillis = 0L;
+// Internal use - Will store last time the fast send (water level) loop was run
+long m_previousFastSendMillis = 0L;
+// Internal use - Will store last time the fast send (raw water level reading) loop was run
+long m_previousRawSendMillis = 0L;
+// Internal use - Counter for the number of button presses
+int m_buttonPushCounter = 0;
+// Internal use - Current state of the button
+int m_buttonState = 0;
+// Internal use - Previous state of the button
+int m_lastButtonState = 0;
+// Internal use - The last water level read
+int m_waterLevel = 0;
 
-void CheckManualFlushCycleButton();
-void DoProcessing();
-void ListenForSerialMessages();
-void ParseMessage(String);
-void ExecuteCommand(int, String);
-void CheckWaterLevel();
-int GetWaterLevel();
-void DoFlushCycle(bool);
-void InitialiseController();
+// Forward declaration of function to send messages to Controller
 void SendMessageToDispenserController(int, String, bool);
-void SetDateTime(String);
-void SendDateTimeMessage();
-String FormatDateTime();
-void ActivateInletPowerRelay(String);
-void ActivateOutletPowerRelay(String);
-void SetFlushPeriod(String);
-void SetWaterLevelReadings(String);
-void SetFastWaterLevelReadings(String);
-void SetLowLevelMark(String);
-void SetHighLevelMark(String);
-void SetAutoFlushHour(String);
-void SetAutoFlushMinuteString(String);
-void SendEthernetMessage(String);
-#if INCLUDE_ETHERNET
-void ListenForNetworkMessages();
-String ReadRequest(EthernetClient*);
-#endif
 
 // Required main entry point
 void setup() 
@@ -183,9 +208,9 @@ void setup()
 	// Initialize the button pin as a input
 	pinMode(MANUAL_FLUSH_BUTTON_PIN, INPUT);
 
-	Serial.print("Server address:");
+	// Send ethernet IP address
+	Serial.print("Ethernet Server address:");
 	Serial.println(Ethernet.localIP());
-	//SendMessageToDispenserController(LOG_WARNING, String(Ethernet.localIP()), true);
 }
 
 // The required processing loop
@@ -201,7 +226,7 @@ void loop()
 	// Check the manual flush cycle button
 	CheckManualFlushCycleButton();
 
-	// Send raw water level data if required every second
+	// Send raw water level data if required, every second
 	unsigned long currentMillis = millis();
 	if (m_sendRawValues)
 	{
@@ -219,6 +244,7 @@ void loop()
 	{
 		if (m_sendFastWaterLevelReadings)
 		{
+			// Every second...
 			if (currentMillis - m_previousFastSendMillis >= 1000)
 			{
 				m_previousFastSendMillis = currentMillis;
@@ -227,6 +253,7 @@ void loop()
 		}
 		else
 		{
+			// Every minute...
 			if (second() == 0)
 			{
 				SendWaterLevelToController();
@@ -357,6 +384,7 @@ void ExecuteCommand(int command, String data)
 	switch (command)
 	{
 		case INIT_CONTROLLER:
+			// Tell the controller what our current state is
 			InitialiseController();
 			break;
 		case TIME:
@@ -370,51 +398,67 @@ void ExecuteCommand(int command, String data)
 				SendDateTimeMessage();
 			break;
 		case INLET_POWER_RELAY:
+			// Sets or returns the inlet solenoid state
 			ActivateInletPowerRelay(data);
 			break;
 		case OUTLET_POWER_RELAY:
+			// Sets or returns the outlet solenoid state
 			ActivateOutletPowerRelay(data);
 			break;
 		case FLUSH_PERIOD:
+			// Sets or returns the flush period
 			SetFlushPeriod(data);
 			break;
 		case WATER_LEVEL_OUTPUT:
-			SetWaterLevelReadings(data);
+			// Sets or returns whether we send water level readings every minute
+			SetSendWaterLevelReadings(data);
 			break;
 		case SEND_FAST_LEVEL_READINGS:
+			// Sets or returns whether we send water level readings every second
 			SetFastWaterLevelReadings(data);
 			break;
 		case DO_FLUSH_CYCLE_NOW:
+			// Do a manual flush cycle now
 			DoFlushCycle(true);
 			break;
 		case LOW_LEVEL_SETTING:
+			// Sets or returns the low level % 
 			SetLowLevelMark(data);
 			break;
 		case HIGH_LEVEL_SETTING:
+			// Sets or returns the high level % 
 			SetHighLevelMark(data);
 			break;
 		case AUTO_FLUSH_HOUR_SETTING:
+			// Sets or returns the hour to perform the auto flush
 			SetAutoFlushHour(data);
 			break;
 		case AUTO_FLUSH_MINUTE_SETTING:
+			// Sets or returns the minute to perform the auto flush
 			SetAutoFlushMinute(data);
 			break;
-		case WATER_LEVEL_READ_INTERVAL:
+		case WATER_LEVEL_READ_SENSOR_INTERVAL:
+			// Sets or returns the interval between sensor readings
 			SetWaterLevelReadInterval(data);
 			break;
 		case SEND_WATER_LEVEL_NOW:
+			// Send the water level to the Controller now
 			SendWaterLevelToController();
 			break;
 		case MAX_SENSOR_VALUE_SETTING:
+			// Sets or returns the maximum high sensor value (1%)
 			SetMaxSensorValue(data);
 			break;
 		case MIN_SENSOR_VALUE_SETTING:
+			// Sets or returns the minimum low sensor value (99%)
 			SetMinSensorValue(data);
 			break;
-		case DO_FLUSH:
+		case ALLOW_FLUSHING:
+			// Sets or returns whether we are allowed to do auto or manual flush cycles
 			SetFlushState(data);
 			break;
 		case SEND_RAW_VALUES:
+			// Sets or returns whether we send raw sensor values every second
 			SetSendRawValueState(data);
 			break;
 		default:
@@ -444,7 +488,7 @@ void CheckWaterLevel()
 	m_waterLevel = GetWaterLevel();
 	if (m_waterLevel < m_lowLevelMark)
 	{
-		// Solenoid is on and water is low, or too low, so fill
+		// Solenoid is on and water is low, so fill
 		digitalWrite(INLET_RELAY_PIN, LOW); // Inlet solenoid on
 		digitalWrite(INLET_LED_PIN, HIGH); // Inlet LED on
 		SendMessageToDispenserController(INLET_POWER_RELAY, "1", true);
@@ -460,7 +504,7 @@ void CheckWaterLevel()
 	}
 	else if (m_waterLevel > m_highLevelMark)
 	{
-		// Solenoid is off and water is now high, or too high, so turn off
+		// Solenoid is off and water is now high, so turn off
 		digitalWrite(INLET_RELAY_PIN, HIGH); // Inlet solenoid off
 		digitalWrite(INLET_LED_PIN, LOW); // Inlet LED off
 		SendMessageToDispenserController(INLET_POWER_RELAY, "0", true);
@@ -496,17 +540,16 @@ int GetWaterLevel()
 	return level;
 }
 
-// Do an flush cycle if it's time or user requested it
+// Do an flush cycle if it's time, or user requested it
 void DoFlushCycle(bool manual)
 {
 	if (!m_doFlush && !m_doingFlushCycle)
 	{
-		//SendMessageToDispenserController(LOG_WARNING, "!n", true); // '!n' = "Flushing has been disabled!"
 		return;
 	}
 	
 	// Check we have a valid date/time
-	if (!manual && !m_doingFlushCycle && year() < 2016)
+	if (!manual && !m_doingFlushCycle && year() < 2013)
 	{
 		if (!m_sentAutoFlushErrorMessage && second() % 30 == 0)
 		{
@@ -527,6 +570,7 @@ void DoFlushCycle(bool manual)
 	// If the flush has already started, check if it's time to stop (after 30 seconds [default])
 	if (m_doingFlushCycle)
 	{
+		// Check if it's time to stop the flush cycle
 		if (currentTime - m_timeAutoFlushStarted >= (m_flushPeriod * 1000))
 		{
 			// Turn outlet solenoid off to stop draining water
@@ -573,8 +617,9 @@ void DoFlushCycle(bool manual)
 	}
 }
 
-// Send: inletRelayPinState, outletRelayPinState, m_sendWaterLevelReadings, m_sendFastWaterLevelReadings, m_flushPeriod,
-//       m_lowLevelMark, m_highLevelMark, m_autoFlushHour, m_autoFlushMinute
+// Send: Inlet Relay Pin State, Outlet Relay Pin State, Send Water Level Readings State, Send Fast Water Level Readings State, Flush Period,
+//       Low Level Mark, High Level Mark, Auto Flush Hour, Auto Flush Minute, Read Interval, Max Sensor Reading, Min Sensor Reading, Do Flush State,
+//		 Send Raw Values State
 void InitialiseController()
 {
 	int inletRelayPinState = digitalRead(INLET_RELAY_PIN);
@@ -647,7 +692,7 @@ void SetDateTime(String data)
 		// Check the integer is a valid time (greater than Jan 1 2013)
 		if (pctime >= DEFAULT_TIME)
 		{
-			// Sync Arduino clock to the time received on the serial port
+			// Sync Arduino clock to the time received
 			setTime(pctime);
 		}
 		error = true;
@@ -714,6 +759,7 @@ void SetDateTime(String data)
 		SendMessageToDispenserController(LOG_WARNING, "!J", true); // '!J' = "Invalid TIME parameter(s)..."
 }
 
+// Send the date/time message
 void SendDateTimeMessage()
 {
 	String msg = "!K"; // '!K' = "Date/Time is now: "
@@ -721,6 +767,7 @@ void SendDateTimeMessage()
 	SendMessageToDispenserController(LOG_INFORMATION, msg, true);
 }
 
+// Format the date/time into a string in the form 'yyyy/mm/dd HH:MM:SS'
 String FormatDateTime()
 {
 	String dateTime = String(year());
@@ -834,7 +881,7 @@ void SetFlushPeriod(String data)
 	}
 }
 
-void SetWaterLevelReadings(String data)
+void SetSendWaterLevelReadings(String data)
 {
 	String msg = "";
 
@@ -995,18 +1042,18 @@ void SetMaxSensorValue(String data)
 {
 	String msg = "";
 
-	// Sets or returns the maximum sensor value that equates to 99% 
+	// Sets or returns the maximum sensor value that equates to 1% 
 	if (data != "")
 	{
 		// Set the maximum sensor value
 		m_maxSensorReading = data.toInt();
-		msg = "!j"; // '!j' = "Max Sensor Value (~99%) set to: "
+		msg = "!j"; // '!j' = "Max Sensor Value (~1%) set to: "
 		msg.concat(m_maxSensorReading);
 	}
 	else
 	{
 		// Send the maximum sensor value
-		msg = "!k"; // '!k' = "Max Sensor Value (~99%) is: "
+		msg = "!k"; // '!k' = "Max Sensor Value (~1%) is: "
 		msg.concat(m_maxSensorReading);
 	}
 	SendMessageToDispenserController(LOG_INFORMATION, msg, true);
@@ -1016,18 +1063,18 @@ void SetMinSensorValue(String data)
 {
 	String msg = "";
 
-	// Sets or returns the minimum sensor value that equates to 1% 
+	// Sets or returns the minimum sensor value that equates to 99% 
 	if (data != "")
 	{
 		// Set the minimum sensor value
 		m_minSensorReading = data.toInt();
-		msg = "!l"; // '!l' = "Min Sensor Value (~1%) set to: "
+		msg = "!l"; // '!l' = "Min Sensor Value (~99%) set to: "
 		msg.concat(m_minSensorReading);
 	}
 	else
 	{
 		// Send the maximum sensor value
-		msg = "!m"; // '!m' = "Min Sensor Value (~1%) is: "
+		msg = "!m"; // '!m' = "Min Sensor Value (~99%) is: "
 		msg.concat(m_minSensorReading);
 	}
 	SendMessageToDispenserController(LOG_INFORMATION, msg, true);
