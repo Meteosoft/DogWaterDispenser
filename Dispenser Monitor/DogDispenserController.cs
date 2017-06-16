@@ -9,13 +9,15 @@ using System.IO;
 using System.Threading;
 using ZedGraph;
 // ReSharper disable CyclomaticComplexity
+// ReSharper disable LocalizableElement
+// ReSharper disable FieldCanBeMadeReadOnly.Local
 
 namespace DispenserController
 {
     public partial class DogDispenserController : Form
     {
         // MESSAGES/COMMANDS
-        public enum ArduinoCommands
+        private enum ArduinoCommands
         {
             /// <summary>Arduino-&gt;Controller: Initialisation</summary>
             INIT_CONTROLLER,
@@ -63,34 +65,35 @@ namespace DispenserController
             INVALID_COMMAND = 99,
         }
 
-        public class ComSettings
+        private class ComSettings
         {
             /// <summary>The COM port last used</summary>
             public string ComPort { get; set; } = "";
             /// <summary>The Ethernet IP last used</summary>
             public string IP { get; set; } = "";
             /// <summary>The Ethernet port last used</summary>
-            public int TCPPort { get; set; } = 0;
+            // ReSharper disable once UnusedAutoPropertyAccessor.Local
+            public int TCPPort { get; set; }
         }
 
         private bool m_usingSerial;
 
-        protected Dictionary<string, string> m_messageMap = new Dictionary<string, string>();
-        protected SerialPort m_arduinoPort = null;
-        protected static object m_syncLock = new object();
+        private Dictionary<string, string> m_messageMap = new Dictionary<string, string>();
+        private SerialPort m_arduinoPort;
+        private static object m_syncLock = new object();
         private bool m_initNeeded = true;
-        private bool m_initialising = false;
+        private bool m_initialising;
         private DateTime m_lastDatePlotted;
         private IPointListEdit WaterLevelList { get; set; }
-        private AsynchronousClient m_client = null;
+        private AsynchronousClient m_client;
         private System.Windows.Forms.Timer m_timer = new System.Windows.Forms.Timer();
 
         /// <summary>The COM port last used</summary>
-        public string ComPort { get; set; } = "COM9";
+        private string ComPort { get; set; } = "COM9";
         /// <summary>The Ethernet IP last used</summary>
-        public string IP { get; set; } = "10.1.1.200";
+        private string IP { get; set; } = "10.1.1.200";
         /// <summary>The Ethernet port last used</summary>
-        public int TCPPort { get; set; } = 80;
+        private int TCPPort { get; } = 80;
 
         public DogDispenserController()
         {
@@ -123,7 +126,7 @@ namespace DispenserController
             string settingFile = @"C:\Temp\WaterLevelSettings.json";
             if (File.Exists(settingFile))
             {
-                string settingData = "";
+                string settingData;
                 using (StreamReader file = new StreamReader(settingFile))
                     settingData = file.ReadToEnd();
                 ComSettings settings = JSONUtilities.DeserialiseJSONToClass<ComSettings>(settingData);
@@ -182,7 +185,7 @@ namespace DispenserController
         /// <summary>
         /// Connect to and initialise the Arduino's serial connection
         /// </summary>
-        public bool ConnectAndInitialiseArduino(bool reconnect = false)
+        private bool ConnectAndInitialiseArduino(bool reconnect = false)
         {
             bool success = true;
             lock (m_syncLock)
@@ -256,7 +259,7 @@ namespace DispenserController
                         {
                             foreach (KeyValuePair<string, string> entry in m_messageMap)
                             {
-                                while (message.IndexOf(entry.Key) != -1)
+                                while (message.IndexOf(entry.Key, StringComparison.Ordinal) != -1)
                                 {
                                     message = message.Replace(entry.Key, entry.Value);
                                 }
@@ -305,7 +308,7 @@ namespace DispenserController
         /// <summary>
         /// Called when the Arduino interface's serial port sends a message asynchronously
         /// </summary>
-        protected void SerialDataReceived(object sender, SerialDataReceivedEventArgs args)
+        private void SerialDataReceived(object sender, SerialDataReceivedEventArgs args)
         {
             try
             {
@@ -315,8 +318,8 @@ namespace DispenserController
                     data = data.TrimEnd();
                     if (string.IsNullOrEmpty(data))
                         continue;
-                    ArduinoCommands command = ArduinoCommands.INVALID_COMMAND;
-                    string message = "";
+                    ArduinoCommands command;
+                    string message;
                     if (data.IndexOf(':') != -1)
                     {
                         if (data[0] < '0' || data[0] > '9')
@@ -333,7 +336,7 @@ namespace DispenserController
                             {
                                 foreach (KeyValuePair<string, string> entry in m_messageMap)
                                 {
-                                    while (message.IndexOf(entry.Key) != -1)
+                                    while (message.IndexOf(entry.Key, StringComparison.Ordinal) != -1)
                                     {
                                         message = message.Replace(entry.Key, entry.Value);
                                     }
@@ -470,10 +473,7 @@ namespace DispenserController
             {
                 checkInlet.Checked = !off;
                 toolStripLedBulbInlet.LedBulbControl.On = true;
-                if (off)
-                    toolStripLedBulbInlet.LedBulbControl.Color = Color.Red;
-                else
-                    toolStripLedBulbInlet.LedBulbControl.Color = Color.FromArgb(255, 153, 255, 54);
+                toolStripLedBulbInlet.LedBulbControl.Color = off ? Color.Red : Color.FromArgb(255, 153, 255, 54);
             }
         }
 
@@ -489,10 +489,7 @@ namespace DispenserController
             {
                 checkOutlet.Checked = !off;
                 toolStripLedBulbOutlet.LedBulbControl.On = true;
-                if (off)
-                    toolStripLedBulbOutlet.LedBulbControl.Color = Color.Red;
-                else
-                    toolStripLedBulbOutlet.LedBulbControl.Color = Color.FromArgb(255, 153, 255, 54);
+                toolStripLedBulbOutlet.LedBulbControl.Color = off ? Color.Red : Color.FromArgb(255, 153, 255, 54);
             }
         }
 
@@ -512,6 +509,7 @@ namespace DispenserController
                 numericHighLevelMark.Value = highMark;
                 numericFlushHour.Value = flushHour;
                 numericFlushMinute.Value = flushMinute;
+                // ReSharper disable once PossibleLossOfFraction
                 numericReadInterval.Value = interval / 1000;
                 numericMaxSensorValue.Value = maxSensorValue;
                 numericMinSensorValue.Value = minSensorValue;
@@ -645,7 +643,7 @@ namespace DispenserController
             }
             catch (Exception)
             {
-                string msg = $"Could not send/receive messages...";
+                string msg = "Could not send/receive messages...";
                 LogMessage(msg, LogLevel.Error);
             }
         }
@@ -840,7 +838,7 @@ namespace DispenserController
             m_messageMap.Add("!r", "Raw Value: ");
         }
 
-        public void InitialiseGraph()
+        private void InitialiseGraph()
         {
             // Setup the graph
             zedGraphDispenserLevel.IsEnableHZoom = false;
@@ -900,7 +898,7 @@ namespace DispenserController
             {
                 using (StreamReader file = new StreamReader(@"C:\Temp\WaterLevel.csv"))
                 {
-                    string fileLine = "";
+                    string fileLine;
                     while ((fileLine = file.ReadLine()) != null)
                     {
                         try
@@ -928,7 +926,7 @@ namespace DispenserController
         /// <summary>
         /// Save the graph results to file
         /// </summary>
-        public void SaveGraphData()
+        private void SaveGraphData()
         {
             // Save graph data
             TrimGraphData(DateTime.Now, WaterLevelList);
@@ -975,7 +973,7 @@ namespace DispenserController
         /// </summary>
         /// <param name="now">Now</param>
         /// <param name="data">The data to trim</param>
-        public void TrimGraphData(DateTime now, IPointListEdit data)
+        private void TrimGraphData(DateTime now, IPointListEdit data)
         {
             DateTime graphCutoff = now - TimeSpan.FromHours(24);
             for (int i = 0; i < data.Count; i++)

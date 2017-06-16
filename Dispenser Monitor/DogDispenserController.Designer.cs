@@ -35,10 +35,10 @@
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabelInlet = new System.Windows.Forms.ToolStripStatusLabel();
-            this.toolStripLedBulbInlet = new Meteosoft.ControllerClient.ToolStripLedBulb();
+            this.toolStripLedBulbInlet = new ToolStripLedBulb();
             this.toolStripStatusLabelGap = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabelOutlet = new System.Windows.Forms.ToolStripStatusLabel();
-            this.toolStripLedBulbOutlet = new Meteosoft.ControllerClient.ToolStripLedBulb();
+            this.toolStripLedBulbOutlet = new ToolStripLedBulb();
             this.toolStripStatusLabelDateTime = new System.Windows.Forms.ToolStripStatusLabel();
             this.splitContainerWhole = new System.Windows.Forms.SplitContainer();
             this.splitContainerLeft = new System.Windows.Forms.SplitContainer();
@@ -758,8 +758,8 @@
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabelDateTime;
         private System.Windows.Forms.SplitContainer splitContainerWhole;
         private System.Windows.Forms.SplitContainer splitContainerLeft;
-        private Meteosoft.ControllerClient.ToolStripLedBulb toolStripLedBulbInlet;
-        private Meteosoft.ControllerClient.ToolStripLedBulb toolStripLedBulbOutlet;
+        private ToolStripLedBulb toolStripLedBulbInlet;
+        private ToolStripLedBulb toolStripLedBulbOutlet;
         private System.Windows.Forms.Label labelFlushPeriod;
         private System.Windows.Forms.NumericUpDown numericFlushPeriod;
         private System.Windows.Forms.Button buttonFlush;

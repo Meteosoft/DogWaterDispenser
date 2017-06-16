@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DispenserController
 {
     static class Program
     {
-        public static bool SerialMode { get; set; } = false;
+        public static bool SerialMode { get; private set; }
 
         /// <summary>
         /// The main entry point for the application.
@@ -16,6 +13,7 @@ namespace DispenserController
         [STAThread]
         static void Main(string[] args)
         {
+            SerialMode = false;
             foreach (string arg in args)
             {
                 if (arg.Length > 6 && arg.Substring(0, 7).ToLower() == "-serial")

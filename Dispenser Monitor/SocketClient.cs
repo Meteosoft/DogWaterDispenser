@@ -4,16 +4,21 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Text;
 using Meteosoft.Common;
+// ReSharper disable FieldCanBeMadeReadOnly.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable LocalizableElement
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+// ReSharper disable EventNeverSubscribedTo.Global
+// ReSharper disable UnusedMember.Global
 
 namespace DispenserController
 {
     // State object for receiving data from remote device
     public class StateObject : IDisposable
     {
-        private bool m_isDisposed = false;
-
         // Client socket
-        public Socket workSocket = null;
+        public Socket workSocket;
 
         // Size of receive buffer.  
         public const int BufferSize = 256;
@@ -29,14 +34,10 @@ namespace DispenserController
             Dispose(false);
         }
 
-        protected void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (disposing)
-            {
                 workSocket.Dispose();
-            }
-            // Code to dispose the un-managed resources of the class
-            m_isDisposed = true;
         }
 
         public void Dispose()
@@ -58,7 +59,7 @@ namespace DispenserController
         public string IP { get; set; }
 
         // Any error
-        public bool ErrorOccurred { get; set; } = false;
+        public bool ErrorOccurred { get; set; }
 
         #region Events
         /// <summary> The event raised when a socket connection is established </summary>
@@ -79,7 +80,7 @@ namespace DispenserController
         private ManualResetEvent sendDone = new ManualResetEvent(false);
         private ManualResetEvent receiveDone = new ManualResetEvent(false);
 
-        private Socket m_client = null;
+        private Socket m_client;
 
         public AsynchronousClient(string ip, int port)
         {
@@ -160,8 +161,7 @@ namespace DispenserController
                 // Complete the connection.  
                 client.EndConnect(ar);
 
-                Console.WriteLine("Socket connected to {0}",
-                    client.RemoteEndPoint.ToString());
+                Console.WriteLine($"Socket connected to {0}", client.RemoteEndPoint);
 
                 // Signal that the connection has been made
                 connectDone.Set();

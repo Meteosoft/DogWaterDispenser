@@ -4,8 +4,11 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedMember.Global
+// ReSharper disable ArrangeAccessorOwnerBody
 
-namespace Meteosoft.ControllerClient
+namespace DispenserController
 {
 	/// <summary>
 	/// The LEDBulb is a .Net control for Windows Forms that emulates an
@@ -18,7 +21,7 @@ namespace Meteosoft.ControllerClient
 		#region Public and Private Members
 
 		private Color m_color;
-        private bool m_blink = false;
+        private bool m_blink;
 		private bool m_on = true;
 		private Color m_reflectionColor = Color.FromArgb(180, 255, 255, 255);
 		private Color[] m_surroundColor = { Color.FromArgb(0, 255, 255, 255) };
@@ -28,8 +31,8 @@ namespace Meteosoft.ControllerClient
 		/// Gets or Sets the color of the LED light
 		/// </summary>
 		[DefaultValue(typeof(Color), "153, 255, 54")]
-		public Color Color { 
-			get { return m_color; } 
+		public Color Color {
+		    private get { return m_color; } 
 			set 
             { 
 				m_color = value;
