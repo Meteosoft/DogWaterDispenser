@@ -23,4 +23,4 @@ when a USB is connected to the Arduino. By default, the program communicates wit
 ## Hardware
 The hardware is configured as follows:
 
-![Hardware]: (Circuit.png?raw=true)
+![Hardware](Circuit.png?raw=true)
