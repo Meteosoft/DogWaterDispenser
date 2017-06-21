@@ -29,21 +29,27 @@ namespace DispenserController
         // Received data string
         public StringBuilder sb = new StringBuilder();
 
+        // Has object been disposed?
+        public bool IsDisposed;
+
         ~StateObject()
         {
             Dispose(false);
+            IsDisposed = true;
         }
 
         private void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && !IsDisposed)
                 workSocket.Dispose();
+            IsDisposed = true;
         }
 
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+            IsDisposed = true;
         }
     }
 
@@ -61,6 +67,11 @@ namespace DispenserController
         // Any error
         public bool ErrorOccurred { get; set; }
 
+        // Has socket been disposed?
+        public bool IsDisposed;
+
+        private object DisposeLock = new object();
+
         #region Events
         /// <summary> The event raised when a socket connection is established </summary>
         public event EventHandler<EventArgs> RaiseConnectEvent;
@@ -71,21 +82,26 @@ namespace DispenserController
         /// <summary> The event raised when data is received from the socket </summary>
         public event EventHandler<DataTransferEventArgs> RaiseDataReceivedEvent;
 
+        /// <summary> The event raised when socket experiences a catastrophic exception </summary>
+        public event EventHandler<EventArgs> RaiseExceptionEvent;
+
         /// <summary> The event raised when a log message is available from the socket class </summary>
         public event EventHandler<LogMsgEventArgs> RaiseLogMessageEvent;
         #endregion
+
+        /// <summary> The client socket </summary>
+        public Socket Client;
 
         // ManualResetEvent instances signal completion
         private ManualResetEvent connectDone = new ManualResetEvent(false);
         private ManualResetEvent sendDone = new ManualResetEvent(false);
         private ManualResetEvent receiveDone = new ManualResetEvent(false);
 
-        private Socket m_client;
-
         public AsynchronousClient(string ip, int port)
         {
             IP = ip;
             Port = port;
+            IsDisposed = false;
         }
 
         public void SendClientOneMessage(string message)
@@ -100,8 +116,9 @@ namespace DispenserController
             }
             catch (Exception)
             {
-                string msg = $"Could not connect to {IP}:{Port}...";
-                RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(msg, LogLevel.Error));
+                if (!ErrorOccurred)
+                    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs($"Could not connect to {IP}:{Port}...", LogLevel.Error));
+                RaiseExceptionEvent?.Invoke(null, new EventArgs());
                 ErrorOccurred = true;
             }
         }
@@ -109,17 +126,31 @@ namespace DispenserController
         public void CloseConnection()
         {
             // Release the socket
-            m_client.Shutdown(SocketShutdown.Both);
-            m_client.Close();
-            m_client.Dispose();
-            m_client = null;
+            try
+            {
+                lock (DisposeLock)
+                {
+                    if (!IsDisposed)
+                    {
+                        Client.Shutdown(SocketShutdown.Both);
+                        Client.Close();
+                        Client.Dispose();
+                    }
+                }
+                IsDisposed = true;
+            }
+            catch
+            {
+                // Ignored
+            }
+            Client = null;
             RaiseDisconnectEvent?.Invoke(null, new EventArgs());
         }
 
         public void ReceiveMessage()
         {
             // Receive the response from the remote device
-            Receive(m_client);
+            Receive(Client);
             receiveDone.WaitOne(2000);
         }
 
@@ -127,14 +158,13 @@ namespace DispenserController
         {
             // Send data to the remote device
             message += "\n";
-            Send(m_client, message);
+            Send(Client, message);
             sendDone.WaitOne();
         }
 
         public void OpenAndConnect()
         {
-// Establish the remote endpoint for the socket
-            // The name of the remote device is "10.1.1.200"  
+            // Establish the remote endpoint for the socket
 #pragma warning disable 618
             IPHostEntry ipHostInfo = Dns.GetHostByName(IP);
 #pragma warning restore 618
@@ -142,11 +172,11 @@ namespace DispenserController
             IPEndPoint remoteEP = new IPEndPoint(ipAddress, Port);
 
             // Create a TCP/IP socket
-            m_client = new Socket(AddressFamily.InterNetwork,
+            Client = new Socket(AddressFamily.InterNetwork,
                 SocketType.Stream, ProtocolType.Tcp);
 
             // Connect to the remote endpoint
-            m_client.BeginConnect(remoteEP, ConnectCallback, m_client);
+            Client.BeginConnect(remoteEP, ConnectCallback, Client);
             connectDone.WaitOne(2000);
             RaiseConnectEvent?.Invoke(null, new EventArgs());
         }
@@ -158,7 +188,7 @@ namespace DispenserController
                 // Retrieve the socket from the state object
                 Socket client = (Socket) ar.AsyncState;
 
-                // Complete the connection.  
+                // Complete the connection 
                 client.EndConnect(ar);
 
                 Console.WriteLine($"Socket connected to {0}", client.RemoteEndPoint);
@@ -168,8 +198,9 @@ namespace DispenserController
             }
             catch (Exception)
             {
-                string msg = $"Connected host has failed to respond on {IP}:{Port}";
-                RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(msg, LogLevel.Error));
+                if (!ErrorOccurred)
+                    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs($"Dispenser unavailable on {IP}:{Port}", LogLevel.Error));
+                RaiseExceptionEvent?.Invoke(null, new EventArgs());
                 ErrorOccurred = true;
             }
         }
@@ -184,10 +215,13 @@ namespace DispenserController
                 // Begin receiving the data from the remote device
                 client.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, ReceiveCallback, state);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Error));
+                if (!ErrorOccurred)
+                    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs($"Dispenser unavailable on {IP}:{Port}", LogLevel.Error));
+                RaiseExceptionEvent?.Invoke(null, new EventArgs());
                 ErrorOccurred = true;
+                throw;
             }
         }
 
@@ -224,11 +258,12 @@ namespace DispenserController
                     // Signal that all bytes have been received
                     receiveDone.Set();
                 }
-                //state.workSocket.Dispose();
             }
             catch (Exception e)
             {
-                RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Error));
+                if (!ErrorOccurred)
+                    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Error));
+                RaiseExceptionEvent?.Invoke(null, new EventArgs());
                 ErrorOccurred = true;
             }
         }
@@ -247,17 +282,19 @@ namespace DispenserController
             try
             {
                 // Retrieve the socket from the state object
-                //Socket client = (Socket) ar.AsyncState;
+                Socket client = (Socket) ar.AsyncState;
 
                 // Complete sending the data to the remote device
-                //int bytesSent = client.EndSend(ar);
+                int bytesSent = client.EndSend(ar);
 
                 // Signal that all bytes have been sent
                 sendDone.Set();
             }
             catch (Exception e)
             {
-                RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Error));
+                if (!ErrorOccurred)
+                    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Error));
+                RaiseExceptionEvent?.Invoke(null, new EventArgs());
                 ErrorOccurred = true;
             }
         }

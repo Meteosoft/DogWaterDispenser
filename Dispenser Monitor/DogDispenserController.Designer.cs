@@ -35,10 +35,10 @@
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabelStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabelInlet = new System.Windows.Forms.ToolStripStatusLabel();
-            this.toolStripLedBulbInlet = new ToolStripLedBulb();
+            this.toolStripLedBulbInlet = new DispenserController.ToolStripLedBulb();
             this.toolStripStatusLabelGap = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabelOutlet = new System.Windows.Forms.ToolStripStatusLabel();
-            this.toolStripLedBulbOutlet = new ToolStripLedBulb();
+            this.toolStripLedBulbOutlet = new DispenserController.ToolStripLedBulb();
             this.toolStripStatusLabelDateTime = new System.Windows.Forms.ToolStripStatusLabel();
             this.splitContainerWhole = new System.Windows.Forms.SplitContainer();
             this.splitContainerLeft = new System.Windows.Forms.SplitContainer();
@@ -430,7 +430,7 @@
             this.textEthernetIP.Size = new System.Drawing.Size(93, 20);
             this.textEthernetIP.TabIndex = 18;
             this.textEthernetIP.Text = "10.1.1.200";
-            this.textEthernetIP.TextChanged += new System.EventHandler(this.textEthernetIP_TextChanged);
+            this.textEthernetIP.Leave += new System.EventHandler(this.textEthernetIP_Leave);
             // 
             // labelIP
             // 

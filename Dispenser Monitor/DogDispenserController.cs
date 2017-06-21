@@ -61,6 +61,8 @@ namespace DispenserController
             ALLOW_FLUSHING,
             /// <summary>Get/Set whether the Arduino should send raw water level values</summary>
             SEND_RAW_VALUES,
+            /// <summary>Ping command to check TCP connection</summary>
+            IS_ALIVE = 98,
             /// <summary>Invalid command</summary>
             INVALID_COMMAND = 99,
         }
@@ -85,7 +87,7 @@ namespace DispenserController
         private bool m_initialising;
         private DateTime m_lastDatePlotted;
         private IPointListEdit WaterLevelList { get; set; }
-        private AsynchronousClient m_client;
+        private AsynchronousClient m_tcpClient;
         private System.Windows.Forms.Timer m_timer = new System.Windows.Forms.Timer();
 
         /// <summary>The COM port last used</summary>
@@ -94,6 +96,8 @@ namespace DispenserController
         private string IP { get; set; } = "10.1.1.200";
         /// <summary>The Ethernet port last used</summary>
         private int TCPPort { get; } = 80;
+
+        private bool m_tcpConnecting = false;
 
         public DogDispenserController()
         {
@@ -150,21 +154,39 @@ namespace DispenserController
             if (!m_usingSerial)
             {
                 comboComPorts.Enabled = false;
-                //checkFastReadings.Enabled = false;
+                ConnectEthernet();
+            }
+        }
 
-                m_client = new AsynchronousClient(IP, TCPPort);
-                m_client.RaiseDataReceivedEvent += TCPDataReceived;
-                m_client.RaiseLogMessageEvent += LogMessageEventReceived;
+        /// <summary>Connect to the Arduino via TCP</summary>
+        private void ConnectEthernet()
+        {
+            // If another thread is already attempting to connect, ignore...
+            if (m_tcpConnecting)
+                return;
+
+            // Connect to the Arduino via ethernet
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                m_tcpConnecting = true;
+                m_tcpClient = new AsynchronousClient(IP, TCPPort);
+                m_tcpClient.RaiseDataReceivedEvent += TCPDataReceived;
+                m_tcpClient.RaiseLogMessageEvent += LogMessageEventReceived;
+                m_tcpClient.RaiseExceptionEvent += ExceptionReceived;
                 try
                 {
-                    m_client.OpenAndConnect();
+                    m_tcpClient.OpenAndConnect();
+                    m_initNeeded = true;
                 }
                 catch (Exception)
                 {
-                    string msg = $"Could not connect to {m_client.IP}:{m_client.Port}...";
-                    LogMessage(msg, LogLevel.Error);
+                    //string msg = $"Could not connect to {m_tcpClient.IP}:{m_tcpClient.Port}...";
+                    //LogMessage(msg, LogLevel.Error);
+                    m_tcpClient?.CloseConnection();
+                    m_tcpClient = null;
                 }
-            }
+                m_tcpConnecting = false;
+            });
         }
 
         /// <summary>Called to log messages, from another thread, to call LogMessage</summary>
@@ -293,6 +315,8 @@ namespace DispenserController
                         case ArduinoCommands.WATER_LEVEL_OUTPUT:
                             UpdateValueAndGraph(message);
                             break;
+                        case ArduinoCommands.IS_ALIVE:
+                            break;
                         default:
                             LogMessage("Invalid command:" + dataLine, LogLevel.Error);
                             break;
@@ -375,6 +399,8 @@ namespace DispenserController
                             break;
                         case ArduinoCommands.WATER_LEVEL_OUTPUT:
                             UpdateValueAndGraph(message);
+                            break;
+                        case ArduinoCommands.IS_ALIVE:
                             break;
                         default:
                             LogMessage("Invalid command:" + data, LogLevel.Error);
@@ -471,9 +497,11 @@ namespace DispenserController
                 BeginInvoke(new CallUpdateInletControls(UpdateInletControls), off);
             else
             {
+                m_initialising = true;
                 checkInlet.Checked = !off;
                 toolStripLedBulbInlet.LedBulbControl.On = true;
                 toolStripLedBulbInlet.LedBulbControl.Color = off ? Color.Red : Color.FromArgb(255, 153, 255, 54);
+                m_initialising = false;
             }
         }
 
@@ -487,9 +515,11 @@ namespace DispenserController
                 BeginInvoke(new CallUpdateOutletControls(UpdateOutletControls), off);
             else
             {
+                m_initialising = true;
                 checkOutlet.Checked = !off;
                 toolStripLedBulbOutlet.LedBulbControl.On = true;
                 toolStripLedBulbOutlet.LedBulbControl.Color = off ? Color.Red : Color.FromArgb(255, 153, 255, 54);
+                m_initialising = false;
             }
         }
 
@@ -591,6 +621,14 @@ namespace DispenserController
             DateTime now = DateTime.Now;
             toolStripStatusLabelDateTime.Text = now.ToString("yyyy-MM-dd HH:mm:ss");
 
+            // Reconnect to the network, if required, every 30 seconds
+            if (m_tcpClient == null && now.Second % 30 == 0)
+                ConnectEthernet();
+
+            // Send alive messages to the Arduino, every 15 seconds
+            if (!m_usingSerial && now.Second % 15 == 0 && m_tcpClient != null)
+                SendTCPMsgToArduino($"{(int)ArduinoCommands.IS_ALIVE}:1");
+
             // Sync the controller with the Arduino settings
             if (m_initNeeded)
             {
@@ -605,7 +643,25 @@ namespace DispenserController
                 m_initNeeded = false;
             }
 
-            m_client?.ReceiveMessage();
+            // Try to receive a messsage
+            try
+            {
+                if (!m_tcpConnecting && m_tcpClient != null)
+                {
+                    if (m_tcpClient.Client.Connected)
+                        m_tcpClient?.ReceiveMessage();
+                    else
+                    {
+                        m_tcpClient?.CloseConnection();
+                        m_tcpClient = null;
+                    }
+                }
+            }
+            catch
+            {
+                m_tcpClient?.CloseConnection();
+                m_tcpClient = null;
+            }
 
             // Request the latest water level
             if (!m_usingSerial && now.Second == 0 && checkSendReadings.Checked)
@@ -630,22 +686,31 @@ namespace DispenserController
 
         private void SendTCPMsgToArduino(string message)
         {
-            //m_client = new AsynchronousClient(IP, TCPPort);
-            //m_client.RaiseDataReceivedEvent += TCPDataReceived;
-            //m_client.RaiseLogMessageEvent += LogMessageEventReceived;
-            //m_client.SendClientOneMessage(message);
+            if (m_tcpClient == null)
+            {
+                LogMessage("No ethernet connection available!", LogLevel.Error);
+                return;
+            }
             try
             {
-                //m_client.OpenAndConnect();
-                m_client.SendMessage(message);
-                m_client.ReceiveMessage();
-                //m_client.CloseConnection();
+                m_tcpClient.SendMessage(message);
+                m_tcpClient.ReceiveMessage();
             }
             catch (Exception)
             {
-                string msg = "Could not send/receive messages...";
-                LogMessage(msg, LogLevel.Error);
+                if (m_tcpClient.Client.Connected)
+                {
+                    string msg = "Could not send/receive messages...";
+                    LogMessage(msg, LogLevel.Error);
+                }
             }
+        }
+
+        private void ExceptionReceived(object sender, EventArgs e)
+        {
+            // Handle situation when socket experiences a catastrophic exception
+            m_tcpClient?.CloseConnection();
+            m_tcpClient = null;
         }
 
         private void LogMessageEventReceived(object sender, LogMsgEventArgs e)
@@ -944,12 +1009,15 @@ namespace DispenserController
             // Close the socket
             try
             {
-                m_client.CloseConnection();
+                m_tcpClient.CloseConnection();
             }
             catch (Exception)
             {
-                string msg = $"Could not close the connection to {m_client.IP}:{m_client.Port}...";
-                LogMessage(msg, LogLevel.Error);
+                if (m_tcpClient != null)
+                {
+                    string msg = $"Could not close the connection to {m_tcpClient.IP}:{m_tcpClient.Port}...";
+                    LogMessage(msg, LogLevel.Error);
+                }
             }
 
             ComSettings settings = new ComSettings
@@ -983,11 +1051,6 @@ namespace DispenserController
                 else
                     break;
             }
-        }
-
-        private void textEthernetIP_TextChanged(object sender, EventArgs e)
-        {
-            IP = textEthernetIP.Text;
         }
 
         private void numericReadInterval_ValueChanged(object sender, EventArgs e)
@@ -1030,6 +1093,17 @@ namespace DispenserController
                 else
                     SendTCPMsgToArduino($"{(int)ArduinoCommands.SEND_RAW_VALUES}:{(checkSendRawValues.Checked ? "1" : "0")}");
             }
+        }
+
+        private void textEthernetIP_Leave(object sender, EventArgs e)
+        {
+            // Shut down previous connection
+            m_tcpClient?.CloseConnection();
+            m_tcpClient = null;
+
+            // Create new connection
+            IP = textEthernetIP.Text;
+            ConnectEthernet();
         }
     }
 }

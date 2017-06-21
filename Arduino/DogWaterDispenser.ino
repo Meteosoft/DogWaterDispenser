@@ -103,6 +103,8 @@ EthernetClient m_client = NULL;
 #define ALLOW_FLUSHING 19
 // Get/Set whether the Arduino should send raw water level values
 #define SEND_RAW_VALUES 20
+// Ping command to check TCP connection
+#define IS_ALIVE 98
 
 // INITIAL DEFAULT CONSTANTS
 // The default % below which the inlet solenoid will be switched on
@@ -460,6 +462,10 @@ void ExecuteCommand(int command, String data)
 		case SEND_RAW_VALUES:
 			// Sets or returns whether we send raw sensor values every second
 			SetSendRawValueState(data);
+			break;
+		case IS_ALIVE:
+			// Ping command to check TCP connection, so reply with same
+			SendMessageToDispenserController(IS_ALIVE, "1", true);
 			break;
 		default:
 			// Command not understood!
