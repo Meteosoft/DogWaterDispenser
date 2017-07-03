@@ -13,3 +13,6 @@ C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController
 C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.csproj.GenerateResource.Cache
 C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.exe
 C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.pdb
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\CodeVendor.Controls.dll
+C:\Development\DogWaterDispenser\Dispenser Monitor\bin\Debug\CodeVendor.Controls.pdb
+C:\Development\DogWaterDispenser\Dispenser Monitor\obj\Debug\DispenserController.Settings.resources

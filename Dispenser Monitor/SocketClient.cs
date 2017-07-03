@@ -259,12 +259,12 @@ namespace DispenserController
                     receiveDone.Set();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                if (!ErrorOccurred)
-                    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Error));
-                RaiseExceptionEvent?.Invoke(null, new EventArgs());
-                ErrorOccurred = true;
+                //if (!ErrorOccurred)
+                //    RaiseLogMessageEvent?.Invoke(null, new LogMsgEventArgs(e.Message, LogLevel.Warning));
+                //RaiseExceptionEvent?.Invoke(null, new EventArgs());
+                //ErrorOccurred = true;
             }
         }
 

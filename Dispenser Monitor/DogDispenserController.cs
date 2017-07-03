@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO.Ports;
 using System.Windows.Forms;
@@ -11,13 +10,26 @@ using ZedGraph;
 // ReSharper disable CyclomaticComplexity
 // ReSharper disable LocalizableElement
 // ReSharper disable FieldCanBeMadeReadOnly.Local
+#pragma warning disable IDE1006 // Naming Styles
+#pragma warning disable IDE0019 // Use pattern matching
 
 namespace DispenserController
 {
     public partial class DogDispenserController : Form
     {
+        /// <summary>The water level status</summary>
+        public enum LevelStatus
+        {
+            /// <summary>Full</summary>
+            FULL,
+            /// <summary>Adequate</summary>
+            ADEQUATE,
+            /// <summary>Empty - needs filling</summary>
+            EMPTY,
+        }
+
         // MESSAGES/COMMANDS
-        private enum ArduinoCommands
+        public enum ArduinoCommands
         {
             /// <summary>Arduino-&gt;Controller: Initialisation</summary>
             INIT_CONTROLLER,
@@ -41,10 +53,6 @@ namespace DispenserController
             SEND_FAST_LEVEL_READINGS,
             /// <summary>Do a manual flush cycle</summary>
             DO_FLUSH_CYCLE_NOW,
-            /// <summary>Get/Set low level mark</summary>
-            LOW_LEVEL_SETTING,
-            /// <summary>Get/Set high level mark</summary>
-            HIGH_LEVEL_SETTING,
             /// <summary>Get/Set auto flush hour</summary>
             AUTO_FLUSH_HOUR_SETTING,
             /// <summary>Get/Set auto flush minute</summary>
@@ -53,14 +61,14 @@ namespace DispenserController
             SEND_WATER_LEVEL_NOW,
             /// <summary>Get/Set the sensor read interval</summary>
             WATER_LEVEL_READ_SENSOR_INTERVAL,
-            /// <summary>Get/Set the maximum sensor value that equates to 1% (higher resistance = lower water level)</summary>
-            MAX_SENSOR_VALUE_SETTING,
-            /// <summary>Get/Set the minimum sensor value that equates to 99% (lower resistance = higher water level)</summary>
-            MIN_SENSOR_VALUE_SETTING,
-            /// <summary>Get/Set whether we are allowed to do auto or manual flush cycles</summary>
-            ALLOW_FLUSHING,
             /// <summary>Get/Set whether the Arduino should send raw water level values</summary>
             SEND_RAW_VALUES,
+            /// <summary>Set the new IP, DNS and Gateway and reset</summary>
+            CHANGE_IP_RESET,
+            /// <summary>Reset the Arduino now</summary>
+            RESET_NOW,
+            /// <summary>Cancel manual reset of the Arduino</summary>
+            CANCEL_RESET,
             /// <summary>Ping command to check TCP connection</summary>
             IS_ALIVE = 98,
             /// <summary>Invalid command</summary>
@@ -79,12 +87,11 @@ namespace DispenserController
         }
 
         private bool m_usingSerial;
+        private Settings m_settingsForm;
 
-        private Dictionary<string, string> m_messageMap = new Dictionary<string, string>();
         private SerialPort m_arduinoPort;
         private static object m_syncLock = new object();
         private bool m_initNeeded = true;
-        private bool m_initialising;
         private DateTime m_lastDatePlotted;
         private IPointListEdit WaterLevelList { get; set; }
         private AsynchronousClient m_tcpClient;
@@ -97,7 +104,7 @@ namespace DispenserController
         /// <summary>The Ethernet port last used</summary>
         private int TCPPort { get; } = 80;
 
-        private bool m_tcpConnecting = false;
+        private bool m_tcpConnecting;
 
         public DogDispenserController()
         {
@@ -105,12 +112,17 @@ namespace DispenserController
 
             InitializeComponent();
             SetLogLevels();
-            BuildMessageMap();
+            //BuildMessageMap();
             InitialiseGraph();
+
+            m_settingsForm = new Settings(m_usingSerial);
+            m_settingsForm.RaiseLogMessageEvent += (sender, args) => LogMessage(args.Message, args.Level);
+            m_settingsForm.RaiseComPortChanged += ComPortChanged;
+            m_settingsForm.RaiseIPChanged += IPChanged;
 
             string[] portNames = SerialPort.GetPortNames();
             foreach (string portName in portNames)
-                comboComPorts.Items.Add(portName);
+                m_settingsForm.comboComPorts.Items.Add(portName);
 
             toolStripLedBulbInlet.LedBulbControl.Color = Color.Red;
             toolStripLedBulbOutlet.LedBulbControl.Color = Color.Red;
@@ -118,13 +130,13 @@ namespace DispenserController
             toolStripLedBulbOutlet.LedBulbControl.On = false;
             if (m_usingSerial)
             {
-                labelIP.Visible = false;
-                textEthernetIP.Visible = false;
+                m_settingsForm.labelLocalIP.Enabled = false;
+                m_settingsForm.textLocalIP.Enabled = false;
             }
             else
             {
-                labelComPorts.Visible = false;
-                comboComPorts.Visible = false;
+                m_settingsForm.labelComPorts.Enabled = false;
+                m_settingsForm.comboComPorts.Enabled = false;
             }
 
             string settingFile = @"C:\Temp\WaterLevelSettings.json";
@@ -134,11 +146,40 @@ namespace DispenserController
                 using (StreamReader file = new StreamReader(settingFile))
                     settingData = file.ReadToEnd();
                 ComSettings settings = JSONUtilities.DeserialiseJSONToClass<ComSettings>(settingData);
-                comboComPorts.SelectedItem = settings.ComPort;
-                textEthernetIP.Text = settings.IP;
+                m_settingsForm.comboComPorts.SelectedItem = settings.ComPort;
+                m_settingsForm.textLocalIP.Text = settings.IP;
             }
 
             toolStripStatusLabelDateTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        private void ComPortChanged(object sender, EventArgs e)
+        {
+            ComPort = (string)m_settingsForm.comboComPorts.SelectedItem;
+            bool reconnect = m_arduinoPort != null;
+            m_arduinoPort?.Close();
+            m_arduinoPort = null;
+            toolStripLedBulbInlet.LedBulbControl.On = true;
+            toolStripLedBulbOutlet.LedBulbControl.On = true;
+            if (m_usingSerial && ConnectAndInitialiseArduino(reconnect))
+            {
+                Cursor = Cursors.WaitCursor;
+                Thread.Sleep(1000);
+                m_initNeeded = true;
+                Cursor = Cursors.Default;
+            }
+            m_settingsForm.ArduinoPort = m_arduinoPort;
+        }
+
+        private void IPChanged(object sender, EventArgs e)
+        {
+            // Shut down previous connection
+            m_tcpClient?.CloseConnection();
+            m_tcpClient = null;
+
+            // Create new connection
+            IP = m_settingsForm.textLocalIP.Text;
+            ConnectEthernet();
         }
 
         private void DogDispenserController_Load(object sender, EventArgs e)
@@ -153,7 +194,7 @@ namespace DispenserController
                 Text += " [Using Ethernet Port]";
             if (!m_usingSerial)
             {
-                comboComPorts.Enabled = false;
+                m_settingsForm.comboComPorts.Enabled = false;
                 ConnectEthernet();
             }
         }
@@ -185,6 +226,7 @@ namespace DispenserController
                     m_tcpClient?.CloseConnection();
                     m_tcpClient = null;
                 }
+                m_settingsForm.TcpClient = m_tcpClient;
                 m_tcpConnecting = false;
             });
         }
@@ -277,16 +319,6 @@ namespace DispenserController
                         int cmd = Convert.ToInt32(dataLine.Substring(0, colonPos));
                         command = (ArduinoCommands) cmd;
                         message = dataLine.Substring(dataLine.IndexOf(':') + 1);
-                        if (!string.IsNullOrEmpty(message) && message.Length >= 2)
-                        {
-                            foreach (KeyValuePair<string, string> entry in m_messageMap)
-                            {
-                                while (message.IndexOf(entry.Key, StringComparison.Ordinal) != -1)
-                                {
-                                    message = message.Replace(entry.Key, entry.Value);
-                                }
-                            }
-                        }
                     }
                     switch (command)
                     {
@@ -356,16 +388,6 @@ namespace DispenserController
                             int cmd = Convert.ToInt32(data.Substring(0, data.IndexOf(':')));
                             command = (ArduinoCommands) cmd;
                             message = data.Substring(data.IndexOf(':') + 1);
-                            if (!string.IsNullOrEmpty(message) && message.Length >= 2)
-                            {
-                                foreach (KeyValuePair<string, string> entry in m_messageMap)
-                                {
-                                    while (message.IndexOf(entry.Key, StringComparison.Ordinal) != -1)
-                                    {
-                                        message = message.Replace(entry.Key, entry.Value);
-                                    }
-                                }
-                            }
                         }
                     }
                     else
@@ -425,20 +447,17 @@ namespace DispenserController
             else
             {
                 string[] values = message.Split(',');
-                if (values.Length == 14)
+                if (values.Length == 12)
                 {
-                    m_initialising = true;
+                    m_settingsForm.Initialising = true;
                     UpdateInletControls(values[0] == "0");
                     UpdateOutletControls(values[1] == "0");
-                    checkSendReadings.Checked = values[2] == "1";
-                    checkFastReadings.Checked = values[3] == "1";
-                    checkAllowFlushing.Checked = values[12] == "1";
-                    buttonFlush.Enabled = checkAllowFlushing.Checked;
-                    checkSendRawValues.Checked = values[13] == "1";
-                    UpdateOtherControls(Convert.ToInt32(values[4]), Convert.ToInt32(values[5]), Convert.ToInt32(values[6]),
-                        Convert.ToInt32(values[7]), Convert.ToInt32(values[8]), Convert.ToInt32(values[9]), Convert.ToInt32(values[10]), 
-                        Convert.ToInt32(values[11]));
-                    m_initialising = false;
+                    m_settingsForm.checkSendReadings.Checked = values[2] == "1";
+                    m_settingsForm.checkFastReadings.Checked = values[3] == "1";
+                    UpdateOtherControls(Convert.ToInt32(values[4]), Convert.ToInt32(values[5]), Convert.ToInt32(values[6]),  
+                        Convert.ToInt32(values[7]), values[9], values[10], values[11]);
+                    m_settingsForm.checkSendRawValues.Checked = values[8] == "1";
+                    m_settingsForm.Initialising = false;
                 }
             }
         }
@@ -456,21 +475,18 @@ namespace DispenserController
                 if (message.IndexOf('@') != -1)
                 {
                     string value = message.Substring(0, message.IndexOf('@'));
-                    int val = Convert.ToInt32(value);
-                    if (val > 99)
-                        val = 99;
-                    if (val < 1)
-                        val = 1;
+                    LevelStatus status = (LevelStatus)Convert.ToInt32(value);
                     DateTime dateTime = DateTime.Parse(message.Substring(message.IndexOf('@') + 1)); // DateTime.Now;
-                    labelCurrentLevel.Text = value + "% [" + (dateTime + TimeSpan.FromSeconds(10)).ToString("dd HH:mm") + "]";
-                    LogMessage($"Level: {value}% @ {dateTime:dd HH:mm:ss}", LogLevel.Information);
+                    labelCurrentLevel.Text = status + " [" + (dateTime + TimeSpan.FromSeconds(10)).ToString("dd HH:mm") + "]";
+                    LogMessage($"Level: {status} @ {dateTime:dd HH:mm:ss}", LogLevel.Information);
 
                     // Graph the val against time
                     if (dateTime != m_lastDatePlotted)
                     {
                         try
                         {
-                            PointPair element = new PointPair(dateTime.ToOADate(), Convert.ToDouble(val));
+                            double graphVal = (status == LevelStatus.FULL) ? 99 : (status == LevelStatus.ADEQUATE ? 50 : 1);
+                            PointPair element = new PointPair(dateTime.ToOADate(), graphVal);
                             WaterLevelList.Add(element);
                             zedGraphDispenserLevel.GraphPane.XAxis.Scale.Min = (dateTime - TimeSpan.FromHours(24.0)).ToOADate();
                             zedGraphDispenserLevel.GraphPane.XAxis.Scale.Max = dateTime.ToOADate();
@@ -497,11 +513,11 @@ namespace DispenserController
                 BeginInvoke(new CallUpdateInletControls(UpdateInletControls), off);
             else
             {
-                m_initialising = true;
-                checkInlet.Checked = !off;
+                m_settingsForm.Initialising = true;
+                m_settingsForm.checkInlet.Checked = !off;
                 toolStripLedBulbInlet.LedBulbControl.On = true;
                 toolStripLedBulbInlet.LedBulbControl.Color = off ? Color.Red : Color.FromArgb(255, 153, 255, 54);
-                m_initialising = false;
+                m_settingsForm.Initialising = false;
             }
         }
 
@@ -515,34 +531,36 @@ namespace DispenserController
                 BeginInvoke(new CallUpdateOutletControls(UpdateOutletControls), off);
             else
             {
-                m_initialising = true;
-                checkOutlet.Checked = !off;
+                m_settingsForm.Initialising = true;
+                m_settingsForm.checkOutlet.Checked = !off;
                 toolStripLedBulbOutlet.LedBulbControl.On = true;
                 toolStripLedBulbOutlet.LedBulbControl.Color = off ? Color.Red : Color.FromArgb(255, 153, 255, 54);
-                m_initialising = false;
+                m_settingsForm.Initialising = false;
             }
         }
 
         /// <summary>Called to update GUI, from another thread, to call UpdateOutletControls</summary>
-        private delegate void CallUpdateOtherControls(int seconds, int lowMark, int highMark, int flushHour, int flushMinute, int interval, int maxSensorValue, int minSensorValue);
+        private delegate void CallUpdateOtherControls(int seconds, int flushHour, int flushMinute, 
+            int interval, string ip, string dns, string gateway);
 
         /// <summary>Called to update GUI</summary>
-        private void UpdateOtherControls(int seconds, int lowMark, int highMark, int flushHour, int flushMinute, int interval, int maxSensorValue, int minSensorValue)
+        private void UpdateOtherControls(int seconds, int flushHour, int flushMinute, 
+            int interval, string ip, string dns, string gateway)
         {
             if (InvokeRequired)
-                BeginInvoke(new CallUpdateOtherControls(UpdateOtherControls), seconds, lowMark, highMark, flushHour, flushMinute, interval,
-                    maxSensorValue, minSensorValue);
+                BeginInvoke(new CallUpdateOtherControls(UpdateOtherControls), seconds, flushHour, flushMinute, interval, ip, dns, gateway);
             else
             {
-                numericFlushPeriod.Value = seconds;
-                numericLowLevelMark.Value = lowMark;
-                numericHighLevelMark.Value = highMark;
-                numericFlushHour.Value = flushHour;
-                numericFlushMinute.Value = flushMinute;
+                m_settingsForm.Initialising = true;
+                m_settingsForm.numericFlushPeriod.Value = seconds;
+                m_settingsForm.numericFlushHour.Value = flushHour;
+                m_settingsForm.numericFlushMinute.Value = flushMinute;
                 // ReSharper disable once PossibleLossOfFraction
-                numericReadInterval.Value = interval / 1000;
-                numericMaxSensorValue.Value = maxSensorValue;
-                numericMinSensorValue.Value = minSensorValue;
+                m_settingsForm.numericReadInterval.Value = interval / 1000;
+                m_settingsForm.textArduinoIP.Text = ip;
+                m_settingsForm.textArduinoDNS.Text = dns;
+                m_settingsForm.textArduinoGateway.Text = gateway;
+                m_settingsForm.Initialising = false;
             }
         }
 
@@ -599,23 +617,6 @@ namespace DispenserController
             return colour;
         }
 
-        private void comboComPorts_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            ComPort = (string) comboComPorts.SelectedItem;
-            bool reconnect = m_arduinoPort != null;
-            m_arduinoPort?.Close();
-            m_arduinoPort = null;
-            toolStripLedBulbInlet.LedBulbControl.On = true;
-            toolStripLedBulbOutlet.LedBulbControl.On = true;
-            if (m_usingSerial && ConnectAndInitialiseArduino(reconnect))
-            {
-                Cursor = Cursors.WaitCursor;
-                Thread.Sleep(1000);
-                m_initNeeded = true;
-                Cursor = Cursors.Default;
-            }
-        }
-
         private void Timer_Tick(object sender, EventArgs e)
         {
             DateTime now = DateTime.Now;
@@ -644,29 +645,26 @@ namespace DispenserController
             }
 
             // Try to receive a messsage
-            try
+            if (!m_usingSerial)
             {
-                if (!m_tcpConnecting && m_tcpClient != null)
+                try
                 {
-                    if (m_tcpClient.Client.Connected)
-                        m_tcpClient?.ReceiveMessage();
-                    else
+                    if (!m_tcpConnecting && m_tcpClient != null)
                     {
-                        m_tcpClient?.CloseConnection();
-                        m_tcpClient = null;
+                        if (m_tcpClient.Client.Connected)
+                            m_tcpClient?.ReceiveMessage();
+                        else
+                        {
+                            m_tcpClient?.CloseConnection();
+                            m_tcpClient = null;
+                        }
                     }
                 }
-            }
-            catch
-            {
-                m_tcpClient?.CloseConnection();
-                m_tcpClient = null;
-            }
-
-            // Request the latest water level
-            if (!m_usingSerial && now.Second == 0 && checkSendReadings.Checked)
-            {
-                //SendTCPMsgToArduino($"{(int)ArduinoCommands.SEND_WATER_LEVEL_NOW}:");
+                catch
+                {
+                    m_tcpClient?.CloseConnection();
+                    m_tcpClient = null;
+                }
             }
 
             // Every 5 minutes save graph data
@@ -716,191 +714,6 @@ namespace DispenserController
         private void LogMessageEventReceived(object sender, LogMsgEventArgs e)
         {
             LogMessage(e.Message, e.Level);
-        }
-
-        private void checkFastReadings_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.SEND_FAST_LEVEL_READINGS}:{(checkFastReadings.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.SEND_FAST_LEVEL_READINGS}:{(checkFastReadings.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void checkSendReadings_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.WATER_LEVEL_OUTPUT}:{(checkSendReadings.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.WATER_LEVEL_OUTPUT}:{(checkSendReadings.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void checkOutlet_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.OUTLET_POWER_RELAY}:{(checkOutlet.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.OUTLET_POWER_RELAY}:{(checkOutlet.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void checkInlet_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.INLET_POWER_RELAY}:{(checkInlet.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.INLET_POWER_RELAY}:{(checkInlet.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void buttonFlush_Click(object sender, EventArgs e)
-        {
-            if (m_usingSerial)
-                m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.DO_FLUSH_CYCLE_NOW}:");
-            else
-                SendTCPMsgToArduino($"{(int)ArduinoCommands.DO_FLUSH_CYCLE_NOW}:");
-        }
-
-        private void buttonSetTime_Click(object sender, EventArgs e)
-        {
-            if (m_usingSerial)
-                m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.TIME}:{DateTime.Now:yyyy,MM,dd,HH,mm,ss}");
-            else
-                SendTCPMsgToArduino($"{(int)ArduinoCommands.TIME}:{DateTime.Now:yyyy,MM,dd,HH,mm,ss}");
-        }
-
-        private void numericFlushPeriod_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.FLUSH_PERIOD}:{numericFlushPeriod.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.FLUSH_PERIOD}:{numericFlushPeriod.Value}");
-            }
-        }
-
-        private void numericFlushHour_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.AUTO_FLUSH_HOUR_SETTING}:{numericFlushHour.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.AUTO_FLUSH_HOUR_SETTING}:{numericFlushHour.Value}");
-            }
-        }
-
-        private void numericFlushMinute_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.AUTO_FLUSH_MINUTE_SETTING}:{numericFlushMinute.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.AUTO_FLUSH_MINUTE_SETTING}:{numericFlushMinute.Value}");
-            }
-        }
-
-        private void numericLowLevelMark_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.LOW_LEVEL_SETTING}:{numericLowLevelMark.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.LOW_LEVEL_SETTING}:{numericLowLevelMark.Value}");
-            }
-        }
-
-        private void numericHighLevelMark_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.HIGH_LEVEL_SETTING}:{numericHighLevelMark.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.HIGH_LEVEL_SETTING}:{numericHighLevelMark.Value}");
-            }
-        }
-
-        private void numericMinSensorValue_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.MIN_SENSOR_VALUE_SETTING}:{numericMinSensorValue.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.MIN_SENSOR_VALUE_SETTING}:{numericMinSensorValue.Value}");
-            }
-        }
-
-        private void numericMaxSensorValue_ValueChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.MAX_SENSOR_VALUE_SETTING}:{numericMaxSensorValue.Value}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.MAX_SENSOR_VALUE_SETTING}:{numericMaxSensorValue.Value}");
-            }
-        }
-
-        private void BuildMessageMap()
-        {
-            m_messageMap.Add("!A", "Invalid command. Received: ");
-            m_messageMap.Add("!B", "Water level is low (");
-            m_messageMap.Add("!C", "%). Filling the dispenser...");
-            m_messageMap.Add("!D", "Water level is high (");
-            m_messageMap.Add("!E", "%). Turning off solenoid...");
-            m_messageMap.Add("!F", "Invalid DATE/TIME. Cannot perform auto flush cycle...");
-            m_messageMap.Add("!G", "Manual flush cycle started: ");
-            m_messageMap.Add("!H", "Auto flush cycle started: ");
-            m_messageMap.Add("!I", "Flush cycle ended: ");
-            m_messageMap.Add("!J", "Invalid TIME parameter(s)...");
-            m_messageMap.Add("!K", "Date/Time is now: ");
-            m_messageMap.Add("!L", "Activating the inlet solenoid...");
-            m_messageMap.Add("!M", "Deactivating the inlet solenoid...");
-            m_messageMap.Add("!N", "Activating the outlet solenoid...");
-            m_messageMap.Add("!O", "Deactivating the outlet solenoid...");
-            m_messageMap.Add("!P", "Flush Period set to ");
-            m_messageMap.Add("!Q", "Flush Period = ");
-            m_messageMap.Add("!R", "Water readings set to ON");
-            m_messageMap.Add("!S", "Water readings set to OFF");
-            m_messageMap.Add("!T", "Water readings is ON");
-            m_messageMap.Add("!U", "Water readings is OFF");
-            m_messageMap.Add("!V", "Will send water level readings every second...");
-            m_messageMap.Add("!W", "Will send water level readings every minute...");
-            m_messageMap.Add("!X", "Water level readings sent every second...");
-            m_messageMap.Add("!Y", "Water level readings sent every minute...");
-            m_messageMap.Add("!Z", "Low level mark set to: ");
-            m_messageMap.Add("!a", "Low level mark is: ");
-            m_messageMap.Add("!b", "High level mark set to: ");
-            m_messageMap.Add("!c", "High level mark is: ");
-            m_messageMap.Add("!d", "Auto flush hour set to: ");
-            m_messageMap.Add("!e", "Auto flush hour is: ");
-            m_messageMap.Add("!f", "Auto flush minute set to: ");
-            m_messageMap.Add("!g", "Auto flush minute is: ");
-            m_messageMap.Add("!h", "Water level read interval set to: ");
-            m_messageMap.Add("!i", "Water level read interval is: ");
-            m_messageMap.Add("!j", "Max Sensor Value (~1%) set to: ");
-            m_messageMap.Add("!k", "Max Sensor Value (~1%) is: ");
-            m_messageMap.Add("!l", "Min Sensor Value (~99%) set to: ");
-            m_messageMap.Add("!m", "Min Sensor Value (~99%) is: ");
-            m_messageMap.Add("!n", "Flushing has been disabled!");
-            m_messageMap.Add("!o", "Flushing has been enabled!");
-            m_messageMap.Add("!p", "Send raw data is Off...");
-            m_messageMap.Add("!q", "Send raw data is On...");
-            m_messageMap.Add("!r", "Raw Value: ");
         }
 
         private void InitialiseGraph()
@@ -1022,8 +835,8 @@ namespace DispenserController
 
             ComSettings settings = new ComSettings
             {
-                ComPort = (string)comboComPorts.SelectedItem,
-                IP = textEthernetIP.Text,
+                ComPort = (string)m_settingsForm.comboComPorts.SelectedItem,
+                IP = m_settingsForm.textLocalIP.Text,
                 TCPPort = 80
             };
             string data = JSONUtilities.SerialiseClassToJSON(settings);
@@ -1053,58 +866,13 @@ namespace DispenserController
             }
         }
 
-        private void numericReadInterval_ValueChanged(object sender, EventArgs e)
+        private void buttonSettings_Click(object sender, EventArgs e)
         {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.WATER_LEVEL_READ_SENSOR_INTERVAL}:{numericReadInterval.Value * 1000}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.WATER_LEVEL_READ_SENSOR_INTERVAL}:{numericReadInterval.Value * 1000}");
-            }
-        }
-
-        private void buttonSyncSettings_Click(object sender, EventArgs e)
-        {
-            if (m_usingSerial)
-                m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.INIT_CONTROLLER}:");
-            else
-                SendTCPMsgToArduino($"{(int)ArduinoCommands.INIT_CONTROLLER}:");
-        }
-
-        private void checkAllowFlushing_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.ALLOW_FLUSHING}:{(checkAllowFlushing.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.ALLOW_FLUSHING}:{(checkAllowFlushing.Checked ? "1" : "0")}");
-                buttonFlush.Enabled = checkAllowFlushing.Checked;
-            }
-        }
-
-        private void checkSendRawValues_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!m_initialising)
-            {
-                if (m_usingSerial)
-                    m_arduinoPort?.WriteLine($"{(int)ArduinoCommands.SEND_RAW_VALUES}:{(checkSendRawValues.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)ArduinoCommands.SEND_RAW_VALUES}:{(checkSendRawValues.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void textEthernetIP_Leave(object sender, EventArgs e)
-        {
-            // Shut down previous connection
-            m_tcpClient?.CloseConnection();
-            m_tcpClient = null;
-
-            // Create new connection
-            IP = textEthernetIP.Text;
-            ConnectEthernet();
+            m_settingsForm.ShowDialog(this);
+            Show();
         }
     }
 }
+#pragma warning restore IDE0019 // Use pattern matching
+#pragma warning restore IDE1006 // Naming Styles
 

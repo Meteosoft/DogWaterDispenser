@@ -14,6 +14,7 @@ C:\Users\rob\AppData\Local\Temp\VMBuilds\DogWaterDispenser\uno\Debug\DogWaterDis
  C:\Program\ Files\ (x86)\Arduino\libraries\Time-master/TimeLib.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Time-master/Time.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Time-master/TimeLib.h \
+ C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\EEPROM\src/EEPROM.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\SPI\src/SPI.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/Arduino.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Ethernet\src/Ethernet.h \
