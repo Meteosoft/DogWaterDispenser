@@ -29,10 +29,7 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Settings));
-            this.checkSendRawValues = new System.Windows.Forms.CheckBox();
             this.buttonSyncSettings = new System.Windows.Forms.Button();
-            this.labelReadInterval = new System.Windows.Forms.Label();
-            this.numericReadInterval = new System.Windows.Forms.NumericUpDown();
             this.textLocalIP = new System.Windows.Forms.TextBox();
             this.labelLocalIP = new System.Windows.Forms.Label();
             this.buttonSetTime = new System.Windows.Forms.Button();
@@ -50,7 +47,6 @@
             this.numericFlushPeriod = new System.Windows.Forms.NumericUpDown();
             this.labelFlushPeriod = new System.Windows.Forms.Label();
             this.labelSec2 = new System.Windows.Forms.Label();
-            this.labelSec = new System.Windows.Forms.Label();
             this.grouperFlushSettings = new CodeVendor.Controls.Grouper();
             this.grouperSolenoidSettings = new CodeVendor.Controls.Grouper();
             this.grouperReadings = new CodeVendor.Controls.Grouper();
@@ -65,7 +61,7 @@
             this.textArduinoIP = new System.Windows.Forms.TextBox();
             this.buttonClose = new System.Windows.Forms.Button();
             this.buttonResetNow = new System.Windows.Forms.Button();
-            ((System.ComponentModel.ISupportInitialize)(this.numericReadInterval)).BeginInit();
+            this.pictureBoxLogo = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.numericFlushMinute)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericFlushHour)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericFlushPeriod)).BeginInit();
@@ -74,18 +70,8 @@
             this.grouperReadings.SuspendLayout();
             this.grouperCommsSettings.SuspendLayout();
             this.grouperArduinoTCPServer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxLogo)).BeginInit();
             this.SuspendLayout();
-            // 
-            // checkSendRawValues
-            // 
-            this.checkSendRawValues.AutoSize = true;
-            this.checkSendRawValues.Location = new System.Drawing.Point(10, 65);
-            this.checkSendRawValues.Name = "checkSendRawValues";
-            this.checkSendRawValues.Size = new System.Drawing.Size(89, 17);
-            this.checkSendRawValues.TabIndex = 2;
-            this.checkSendRawValues.Text = "Raw Values?";
-            this.checkSendRawValues.UseVisualStyleBackColor = true;
-            this.checkSendRawValues.CheckedChanged += new System.EventHandler(this.checkSendRawValues_CheckedChanged);
             // 
             // buttonSyncSettings
             // 
@@ -97,38 +83,6 @@
             this.buttonSyncSettings.Text = "Sync Settings";
             this.buttonSyncSettings.UseVisualStyleBackColor = true;
             this.buttonSyncSettings.Click += new System.EventHandler(this.buttonSyncSettings_Click);
-            // 
-            // labelReadInterval
-            // 
-            this.labelReadInterval.AutoSize = true;
-            this.labelReadInterval.Location = new System.Drawing.Point(7, 86);
-            this.labelReadInterval.Name = "labelReadInterval";
-            this.labelReadInterval.Size = new System.Drawing.Size(74, 13);
-            this.labelReadInterval.TabIndex = 3;
-            this.labelReadInterval.Text = "Read Interval:";
-            // 
-            // numericReadInterval
-            // 
-            this.numericReadInterval.Location = new System.Drawing.Point(10, 100);
-            this.numericReadInterval.Maximum = new decimal(new int[] {
-            600,
-            0,
-            0,
-            0});
-            this.numericReadInterval.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.numericReadInterval.Name = "numericReadInterval";
-            this.numericReadInterval.Size = new System.Drawing.Size(40, 20);
-            this.numericReadInterval.TabIndex = 4;
-            this.numericReadInterval.Value = new decimal(new int[] {
-            5,
-            0,
-            0,
-            0});
-            this.numericReadInterval.ValueChanged += new System.EventHandler(this.numericReadInterval_ValueChanged);
             // 
             // textLocalIP
             // 
@@ -192,7 +146,7 @@
             // checkFastReadings
             // 
             this.checkFastReadings.AutoSize = true;
-            this.checkFastReadings.Location = new System.Drawing.Point(20, 45);
+            this.checkFastReadings.Location = new System.Drawing.Point(20, 44);
             this.checkFastReadings.Name = "checkFastReadings";
             this.checkFastReadings.Size = new System.Drawing.Size(129, 17);
             this.checkFastReadings.TabIndex = 1;
@@ -325,15 +279,6 @@
             this.labelSec2.TabIndex = 6;
             this.labelSec2.Text = "Secs";
             // 
-            // labelSec
-            // 
-            this.labelSec.AutoSize = true;
-            this.labelSec.Location = new System.Drawing.Point(50, 104);
-            this.labelSec.Name = "labelSec";
-            this.labelSec.Size = new System.Drawing.Size(31, 13);
-            this.labelSec.TabIndex = 5;
-            this.labelSec.Text = "Secs";
-            // 
             // grouperFlushSettings
             // 
             this.grouperFlushSettings.Anchor = System.Windows.Forms.AnchorStyles.None;
@@ -353,7 +298,7 @@
             this.grouperFlushSettings.ForeColor = System.Drawing.Color.Black;
             this.grouperFlushSettings.GroupImage = null;
             this.grouperFlushSettings.GroupTitle = "Flush Settings";
-            this.grouperFlushSettings.Location = new System.Drawing.Point(4, 144);
+            this.grouperFlushSettings.Location = new System.Drawing.Point(4, 145);
             this.grouperFlushSettings.Name = "grouperFlushSettings";
             this.grouperFlushSettings.Padding = new System.Windows.Forms.Padding(20);
             this.grouperFlushSettings.PaintGroupBox = true;
@@ -378,7 +323,7 @@
             this.grouperSolenoidSettings.ForeColor = System.Drawing.Color.Black;
             this.grouperSolenoidSettings.GroupImage = null;
             this.grouperSolenoidSettings.GroupTitle = "Solenoid Settings";
-            this.grouperSolenoidSettings.Location = new System.Drawing.Point(172, 125);
+            this.grouperSolenoidSettings.Location = new System.Drawing.Point(4, 74);
             this.grouperSolenoidSettings.Name = "grouperSolenoidSettings";
             this.grouperSolenoidSettings.Padding = new System.Windows.Forms.Padding(20);
             this.grouperSolenoidSettings.PaintGroupBox = true;
@@ -386,7 +331,7 @@
             this.grouperSolenoidSettings.ShadowColor = System.Drawing.Color.DarkGray;
             this.grouperSolenoidSettings.ShadowControl = false;
             this.grouperSolenoidSettings.ShadowThickness = 3;
-            this.grouperSolenoidSettings.Size = new System.Drawing.Size(140, 65);
+            this.grouperSolenoidSettings.Size = new System.Drawing.Size(157, 65);
             this.grouperSolenoidSettings.TabIndex = 4;
             // 
             // grouperReadings
@@ -398,15 +343,11 @@
             this.grouperReadings.BorderColor = System.Drawing.Color.Black;
             this.grouperReadings.BorderThickness = 1F;
             this.grouperReadings.Controls.Add(this.checkSendReadings);
-            this.grouperReadings.Controls.Add(this.labelSec);
             this.grouperReadings.Controls.Add(this.checkFastReadings);
-            this.grouperReadings.Controls.Add(this.numericReadInterval);
-            this.grouperReadings.Controls.Add(this.checkSendRawValues);
-            this.grouperReadings.Controls.Add(this.labelReadInterval);
             this.grouperReadings.CustomGroupBoxColor = System.Drawing.Color.White;
             this.grouperReadings.ForeColor = System.Drawing.Color.Black;
             this.grouperReadings.GroupImage = null;
-            this.grouperReadings.GroupTitle = "Reading Data";
+            this.grouperReadings.GroupTitle = "Data";
             this.grouperReadings.Location = new System.Drawing.Point(4, 3);
             this.grouperReadings.Name = "grouperReadings";
             this.grouperReadings.Padding = new System.Windows.Forms.Padding(20);
@@ -415,7 +356,7 @@
             this.grouperReadings.ShadowColor = System.Drawing.Color.DarkGray;
             this.grouperReadings.ShadowControl = false;
             this.grouperReadings.ShadowThickness = 3;
-            this.grouperReadings.Size = new System.Drawing.Size(157, 135);
+            this.grouperReadings.Size = new System.Drawing.Size(157, 65);
             this.grouperReadings.TabIndex = 0;
             // 
             // grouperCommsSettings
@@ -543,9 +484,10 @@
             this.buttonClose.Location = new System.Drawing.Point(410, 229);
             this.buttonClose.Name = "buttonClose";
             this.buttonClose.Size = new System.Drawing.Size(61, 23);
-            this.buttonClose.TabIndex = 8;
+            this.buttonClose.TabIndex = 9;
             this.buttonClose.Text = "Close";
             this.buttonClose.UseVisualStyleBackColor = true;
+            this.buttonClose.Click += new System.EventHandler(this.buttonClose_Click);
             // 
             // buttonResetNow
             // 
@@ -553,10 +495,22 @@
             this.buttonResetNow.Location = new System.Drawing.Point(170, 224);
             this.buttonResetNow.Name = "buttonResetNow";
             this.buttonResetNow.Size = new System.Drawing.Size(93, 23);
-            this.buttonResetNow.TabIndex = 9;
+            this.buttonResetNow.TabIndex = 8;
             this.buttonResetNow.Text = "Reset Arduino";
             this.buttonResetNow.UseVisualStyleBackColor = true;
             this.buttonResetNow.Click += new System.EventHandler(this.buttonResetNow_Click);
+            // 
+            // pictureBoxLogo
+            // 
+            this.pictureBoxLogo.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.pictureBoxLogo.BackColor = System.Drawing.Color.Transparent;
+            this.pictureBoxLogo.Image = ((System.Drawing.Image)(resources.GetObject("pictureBoxLogo.Image")));
+            this.pictureBoxLogo.Location = new System.Drawing.Point(224, 140);
+            this.pictureBoxLogo.Name = "pictureBoxLogo";
+            this.pictureBoxLogo.Size = new System.Drawing.Size(32, 32);
+            this.pictureBoxLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.AutoSize;
+            this.pictureBoxLogo.TabIndex = 10;
+            this.pictureBoxLogo.TabStop = false;
             // 
             // Settings
             // 
@@ -565,12 +519,13 @@
             this.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("$this.BackgroundImage")));
             this.CancelButton = this.buttonClose;
             this.ClientSize = new System.Drawing.Size(491, 259);
+            this.Controls.Add(this.pictureBoxLogo);
+            this.Controls.Add(this.grouperSolenoidSettings);
             this.Controls.Add(this.buttonResetNow);
             this.Controls.Add(this.buttonClose);
             this.Controls.Add(this.grouperArduinoTCPServer);
             this.Controls.Add(this.grouperCommsSettings);
             this.Controls.Add(this.grouperReadings);
-            this.Controls.Add(this.grouperSolenoidSettings);
             this.Controls.Add(this.grouperFlushSettings);
             this.Controls.Add(this.buttonSyncSettings);
             this.Controls.Add(this.buttonSetTime);
@@ -582,7 +537,6 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Dispenser Properties";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Properties_FormClosing);
-            ((System.ComponentModel.ISupportInitialize)(this.numericReadInterval)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericFlushMinute)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericFlushHour)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericFlushPeriod)).EndInit();
@@ -596,13 +550,14 @@
             this.grouperCommsSettings.PerformLayout();
             this.grouperArduinoTCPServer.ResumeLayout(false);
             this.grouperArduinoTCPServer.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxLogo)).EndInit();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
         #endregion
         private System.Windows.Forms.Button buttonSyncSettings;
-        private System.Windows.Forms.Label labelReadInterval;
         public System.Windows.Forms.Label labelLocalIP;
         private System.Windows.Forms.Button buttonSetTime;
         private System.Windows.Forms.Button buttonFlush;
@@ -611,7 +566,6 @@
         private System.Windows.Forms.Label labelFlushHour;
         private System.Windows.Forms.Label labelFlushPeriod;
         private System.Windows.Forms.Label labelSec2;
-        private System.Windows.Forms.Label labelSec;
         private CodeVendor.Controls.Grouper grouperFlushSettings;
         private CodeVendor.Controls.Grouper grouperSolenoidSettings;
         private CodeVendor.Controls.Grouper grouperReadings;
@@ -622,8 +576,6 @@
         private System.Windows.Forms.Label labelArduinoIP;
         private System.Windows.Forms.Button buttonClose;
         private System.Windows.Forms.Button buttonSetArduinoIP;
-        public System.Windows.Forms.CheckBox checkSendRawValues;
-        public System.Windows.Forms.NumericUpDown numericReadInterval;
         public System.Windows.Forms.TextBox textLocalIP;
         public System.Windows.Forms.ComboBox comboComPorts;
         public System.Windows.Forms.CheckBox checkFastReadings;
@@ -637,5 +589,6 @@
         public System.Windows.Forms.TextBox textArduinoDNS;
         public System.Windows.Forms.TextBox textArduinoIP;
         private System.Windows.Forms.Button buttonResetNow;
+        private System.Windows.Forms.PictureBox pictureBoxLogo;
     }
 }

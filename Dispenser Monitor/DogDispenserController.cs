@@ -47,9 +47,9 @@ namespace DispenserController
             OUTLET_POWER_RELAY,
             /// <summary>Get/set the flush period</summary>
             FLUSH_PERIOD,
-            /// <summary>Start/stop the water level readings</summary>
+            /// <summary>Start/stop the water level readings, or "Here is the latest reading"</summary>
             WATER_LEVEL_OUTPUT,
-            /// <summary>Send one second level readings (not the usual one minute)</summary>
+            /// <summary>Send one second level readings (as well as the usual one minute)</summary>
             SEND_FAST_LEVEL_READINGS,
             /// <summary>Do a manual flush cycle</summary>
             DO_FLUSH_CYCLE_NOW,
@@ -59,10 +59,6 @@ namespace DispenserController
             AUTO_FLUSH_MINUTE_SETTING,
             /// <summary>Send water level reading now (for network connection)</summary>
             SEND_WATER_LEVEL_NOW,
-            /// <summary>Get/Set the sensor read interval</summary>
-            WATER_LEVEL_READ_SENSOR_INTERVAL,
-            /// <summary>Get/Set whether the Arduino should send raw water level values</summary>
-            SEND_RAW_VALUES,
             /// <summary>Set the new IP, DNS and Gateway and reset</summary>
             CHANGE_IP_RESET,
             /// <summary>Reset the Arduino now</summary>
@@ -447,7 +443,7 @@ namespace DispenserController
             else
             {
                 string[] values = message.Split(',');
-                if (values.Length == 12)
+                if (values.Length == 10)
                 {
                     m_settingsForm.Initialising = true;
                     UpdateInletControls(values[0] == "0");
@@ -455,8 +451,7 @@ namespace DispenserController
                     m_settingsForm.checkSendReadings.Checked = values[2] == "1";
                     m_settingsForm.checkFastReadings.Checked = values[3] == "1";
                     UpdateOtherControls(Convert.ToInt32(values[4]), Convert.ToInt32(values[5]), Convert.ToInt32(values[6]),  
-                        Convert.ToInt32(values[7]), values[9], values[10], values[11]);
-                    m_settingsForm.checkSendRawValues.Checked = values[8] == "1";
+                        values[7], values[8], values[9]);
                     m_settingsForm.Initialising = false;
                 }
             }
@@ -540,23 +535,21 @@ namespace DispenserController
         }
 
         /// <summary>Called to update GUI, from another thread, to call UpdateOutletControls</summary>
-        private delegate void CallUpdateOtherControls(int seconds, int flushHour, int flushMinute, 
-            int interval, string ip, string dns, string gateway);
+        private delegate void CallUpdateOtherControls(int flushPeriod, int flushHour, int flushMinute, 
+            string ip, string dns, string gateway);
 
         /// <summary>Called to update GUI</summary>
-        private void UpdateOtherControls(int seconds, int flushHour, int flushMinute, 
-            int interval, string ip, string dns, string gateway)
+        private void UpdateOtherControls(int flushPeriod, int flushHour, int flushMinute, 
+            string ip, string dns, string gateway)
         {
             if (InvokeRequired)
-                BeginInvoke(new CallUpdateOtherControls(UpdateOtherControls), seconds, flushHour, flushMinute, interval, ip, dns, gateway);
+                BeginInvoke(new CallUpdateOtherControls(UpdateOtherControls), flushPeriod, flushHour, flushMinute, ip, dns, gateway);
             else
             {
                 m_settingsForm.Initialising = true;
-                m_settingsForm.numericFlushPeriod.Value = seconds;
+                m_settingsForm.numericFlushPeriod.Value = flushPeriod;
                 m_settingsForm.numericFlushHour.Value = flushHour;
                 m_settingsForm.numericFlushMinute.Value = flushMinute;
-                // ReSharper disable once PossibleLossOfFraction
-                m_settingsForm.numericReadInterval.Value = interval / 1000;
                 m_settingsForm.textArduinoIP.Text = ip;
                 m_settingsForm.textArduinoDNS.Text = dns;
                 m_settingsForm.textArduinoGateway.Text = gateway;
@@ -822,7 +815,7 @@ namespace DispenserController
             // Close the socket
             try
             {
-                m_tcpClient.CloseConnection();
+                m_tcpClient?.CloseConnection();
             }
             catch (Exception)
             {
@@ -847,6 +840,7 @@ namespace DispenserController
 
             // Save the graph data
             SaveGraphData();
+            e.Cancel = false;
         }
 
         /// <summary>
@@ -868,8 +862,11 @@ namespace DispenserController
 
         private void buttonSettings_Click(object sender, EventArgs e)
         {
-            m_settingsForm.ShowDialog(this);
-            Show();
+            if (m_settingsForm.Visible == false)
+            {
+                m_settingsForm.Show(this);
+                Show();
+            }
         }
     }
 }

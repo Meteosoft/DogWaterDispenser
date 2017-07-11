@@ -28,7 +28,7 @@
 // If defined, this will use the EEPROM to persist states between resets (required for IP changes)
 #define SAVE_CONFIG_EEPROM 1
 // If defined, this will use the watchdog to reset if the device freezes, and also allows
-// for forced resets (i.e. when the IP changes)
+// for external forced resets (i.e. when the IP changes)
 #define USE_WATCHDOG 1
 
 #include <TimeLib.h>
@@ -45,11 +45,11 @@
 // The water level status
 enum
 {
-	// The bowl is full (water level at or over the highest sensor probe)
+	// The bowl is full (water level at or over the highest sensor switch)
 	FULL,
-	// The bowl is adequate (water level under the highest sensor probe, but over the lowest)
+	// The bowl is adequate (water level under the highest sensor switch, but over the lowest)
 	ADEQUATE,
-	// The bowl is almost empty (water level under both the highest sensor probe and the lowest)
+	// The bowl is almost empty (water level under the lowest sensor switch)
 	EMPTY,
 };
 
@@ -81,26 +81,20 @@ struct IPAddressParts
 // PINS
 // The push button pin for manual flush cycle
 #define MANUAL_FLUSH_BUTTON_PIN 3
+// The bottom (empty) water level sensor pin
+#define BOTTOM_SENSOR_PIN 4
 // The power relay pin for inlet solenoid
 #define INLET_RELAY_PIN 5
 // The power relay pin for outlet solenoid
 #define OUTLET_RELAY_PIN 6
-// The water level sensor power pin (switched on only when reading is 
-// taken to minimise electrolysis)
-#define POWER_TO_SENSOR_PIN 7
+// The top (full) water level sensor pin
+#define TOP_SENSOR_PIN 7
 // The inlet solenoid LED pin
 #define INLET_LED_PIN 8
 // The outlet solenoid LED pin
 #define OUTLET_LED_PIN 9
 // NOTE: Pins 10, 11, 12 and 13 are used by the ethernet shield, and 1 and 2 
 // are used by the serial bus
-
-// As we have only one digitial pin left and we need two, we must use the 
-// analog pins instead:
-// The high water level sensor pin
-#define HIGH_WATER_LEVEL_PIN A3
-// The low water level sensor pin
-#define LOW_WATER_LEVEL_PIN A4
 
 // COMMANDS
 // Arduino->Controller: Initialisation
@@ -119,9 +113,9 @@ struct IPAddressParts
 #define OUTLET_POWER_RELAY 6
 // Set the flush period
 #define FLUSH_PERIOD 7
-// Start/stop the water level readings
+// Start/stop the water level readings, or "Here is the latest reading"
 #define WATER_LEVEL_OUTPUT 8
-// Send one second level readings (not the usual one minute)
+// Send one second level readings (as well as the usual one minute)
 #define SEND_FAST_LEVEL_READINGS 9
 // Do a manual flush cycle
 #define DO_FLUSH_CYCLE_NOW 10
@@ -131,16 +125,12 @@ struct IPAddressParts
 #define AUTO_FLUSH_MINUTE_SETTING 12
 // Send water level reading now (for network connection)
 #define SEND_WATER_LEVEL_NOW 13
-// Set the sensor read interval
-#define WATER_LEVEL_READ_SENSOR_INTERVAL 14
-// Set whether the Arduino should send raw water level values
-#define SEND_RAW_VALUES 15
 // Set the new IP, DNS and Gateway and reset
-#define CHANGE_IP_RESET 16
+#define CHANGE_IP_RESET 14
 // Manually reset the Arduino now
-#define RESET_NOW 17
+#define RESET_NOW 15
 // Cancel manual reset of the Arduino
-#define CANCEL_RESET 18
+#define CANCEL_RESET 16
 // Ping command to check TCP connection
 #define IS_ALIVE 98
 
@@ -157,7 +147,7 @@ struct IPAddressParts
 
 #if SAVE_CONFIG_EEPROM
 	// The latest EEPROM config version
-	#define CONFIG_VER 3
+	#define CONFIG_VER 2
 
 	// The EEPROM configuration
 	struct PersistedValues
@@ -171,8 +161,6 @@ struct IPAddressParts
 		int flushPeriod;
 		int autoFlushHour;
 		int autoFlushMinute;
-		int readInterval;
-		int sendRawValues;
 	};
 #endif // SAVE_CONFIG_EEPROM
 
@@ -181,12 +169,10 @@ struct IPAddressParts
 bool m_inletOn = false;
 // Are we currently performing a flush cycle? Default is initially NO
 bool m_doingFlushCycle = false;
-// Should we send water level readings to any external software (if connected) every minute? Default is YES by default
+// Should we send water level readings to any external software (if connected) every minute? Default is YES
 bool m_sendWaterLevelReadings = true;
-// Should we send water level readings to any external software (if connected) every second? Default is NO by default
+// Should we send water level readings to any external software (if connected) every second? Default is NO
 bool m_sendFastWaterLevelReadings = false;
-// Should we send raw sensor readings to any external software (if connected) every second? Default is NO by default
-bool m_sendRawValues = false;
 // Are we counting down to a reset?
 bool m_resetInProgress = false;
 // Number of seconds to reset
@@ -200,8 +186,6 @@ int m_flushPeriod = FLUSH_SECONDS;
 int m_autoFlushHour = AUTO_FLUSH_HOUR;
 // The default flush minute
 int m_autoFlushMinute = AUTO_FLUSH_MINUTE;
-// The default sensor read interval
-int m_readInterval = READ_SENSOR_INTERVAL;
 
 // Internal use - flags setup success, or otherwise
 bool m_setupOkay = false;
@@ -213,18 +197,30 @@ unsigned long m_timeAutoFlushStarted = 0L;
 long m_previousReadLoopMillis = 0L;
 // Internal use - Will store last time the fast send (water level) loop was run
 long m_previousFastSendMillis = 0L;
-// Internal use - Counter for the number of button presses
+// Internal use - Counter for the number of manual flush button presses
 int m_buttonPushCounter = 0;
-// Internal use - Current state of the button
+// Internal use - Current state of the manual flush button
 int m_buttonState = 0;
-// Internal use - Previous state of the button
+// Internal use - Previous state of the manual flush button
 int m_lastButtonState = 0;
 // Internal use - The last water level read
-int m_waterLevel = ADEQUATE;
-// Internal use - The sensor probes may be corroded
-bool m_corrodedProbesPossible = false;
+byte m_waterLevel = ADEQUATE;
 // Internal use - Incomplete data error message
 const String m_noDataErrorMsg PROGMEM = "Invalid - No data given";
+
+// Internal use - Counter for the number of top switch contacts
+int m_topSwitchCounter = 0;
+// Internal use - Current state of the top switch
+int m_topSwitchState = 0;
+// Internal use - Previous state of the top switch
+int m_lastTopSwitchState = 0;
+
+// Internal use - Counter for the number of bottom switch contacts
+int m_bottomSwitchCounter = 0;
+// Internal use - Current state of the bottom switch
+int m_bottomSwitchState = 0;
+// Internal use - Previous state of the bottom switch
+int m_lastBottomSwitchState = 0;
 
 // Forward declaration of required functions
 void SendMessageToDispenserController(int, String, bool);
@@ -244,9 +240,9 @@ void setup()
 	// Initialize serial communication at 9600 bits per second:
 	Serial.begin(9600);
 
-	// Sets the power to water level sensor digital pin as output (initially off)
-	digitalWrite(POWER_TO_SENSOR_PIN, LOW);
-	pinMode(POWER_TO_SENSOR_PIN, OUTPUT);
+	// Sets the top and bottom water level sensor digital pins as input
+	pinMode(TOP_SENSOR_PIN, INPUT);
+	pinMode(BOTTOM_SENSOR_PIN, INPUT);
 
 	// Sets the inlet solenoid power relay and LED digital pins as output (initially off)
 	digitalWrite(INLET_RELAY_PIN, HIGH);
@@ -339,15 +335,13 @@ void loop()
 			if (second() == 0)
 			{
 				SendWaterLevelToController();
-				if (m_corrodedProbesPossible)
-					SendMessageToDispenserController(LOG_WARNING, F("Please check probes for corrosion!"), true);
-				delay(500);
+				delay(200);
 			}
 		}
 	}
 
 	// Do automatic water level checking every second
-	if (currentMillis - m_previousReadLoopMillis >= m_readInterval)
+	if (currentMillis - m_previousReadLoopMillis >= 1000)
 	{
 		m_previousReadLoopMillis = currentMillis;
 		DoProcessing();
@@ -510,17 +504,9 @@ void ExecuteCommand(int command, String data)
 			// Sets the minute to perform the auto flush
 			SetAutoFlushMinute(data);
 			break;
-		case WATER_LEVEL_READ_SENSOR_INTERVAL:
-			// Sets the interval between sensor readings
-			SetWaterLevelReadInterval(data);
-			break;
 		case SEND_WATER_LEVEL_NOW:
 			// Send the water level to the Controller now
 			SendWaterLevelToController();
-			break;
-		case SEND_RAW_VALUES:
-			// Sets whether we send raw sensor values every second
-			SetSendRawValueState(data);
 			break;
 		case CHANGE_IP_RESET:
 			// Set a new IP, DNS and Gateway, and reset
@@ -562,7 +548,7 @@ void CheckWaterLevel()
 	// Get water level
 	m_waterLevel = GetWaterLevel();
 
-	// Check levels
+	// Check whether solenoids should be switched on/off
 	if (m_waterLevel == EMPTY)
 	{
 		// Water level is low, so fill
@@ -573,7 +559,6 @@ void CheckWaterLevel()
 		{
 			String msg = F("Water level is low. Filling the dispenser...");
 			SendMessageToDispenserController(LOG_INFORMATION, msg, true);
-			SendWaterLevelToController();
 			m_inletOn = true;
 		}
 	}
@@ -587,7 +572,6 @@ void CheckWaterLevel()
 		{
 			String msg = F("Water level is high. Turning off solenoid...");
 			SendMessageToDispenserController(LOG_INFORMATION, msg, true);
-			SendWaterLevelToController();
 			m_inletOn = false;
 		}
 	}
@@ -596,56 +580,17 @@ void CheckWaterLevel()
 // Read the current water level
 int GetWaterLevel()
 {
-	// Turn on the power to the water level sensors
-	digitalWrite(POWER_TO_SENSOR_PIN, HIGH); // On
-	delay(500);
-
-	// Read the pin values (between 0 [probe in water] and 1024 [probe out of water])
-	int highLevel = analogRead(HIGH_WATER_LEVEL_PIN);
-	int lowLevel = analogRead(LOW_WATER_LEVEL_PIN);
-
-	// Turn off the power to the water level sensors
-	digitalWrite(POWER_TO_SENSOR_PIN, LOW); // Off
-
-	// Send raw values if requested
-	if (m_sendRawValues)
-	{
-		String msg = F("High Raw Value: ");
-		msg.concat(String(highLevel));
-		SendMessageToDispenserController(LOG_INFORMATION, msg, true);
-		msg = F("Low Raw Value: ");
-		msg.concat(String(lowLevel));
-		SendMessageToDispenserController(LOG_INFORMATION, msg, true);
-	}
-
-	// Compute the sensor probe state. The logic is:
-	// If water is touching the sensor probe, a good connection = very low raw value (say 0 to 100) on 
-	// the analog pin. If the probe is corroded, the raw value increases (say > 200). When the raw value
-	// approaches 512, then we won't be able to tell the water level.
-	if ((highLevel < 512 && highLevel > 200) || (lowLevel < 512 && lowLevel > 200))
-		m_corrodedProbesPossible = true;
-	else
-		m_corrodedProbesPossible = false;
+	// Read the pin values
+	m_topSwitchState = digitalRead(TOP_SENSOR_PIN);
+	m_bottomSwitchState = digitalRead(BOTTOM_SENSOR_PIN);
 
 	// Compute the water level state
-	if (highLevel < 512)
-	{
-		if (m_sendRawValues)
-			SendMessageToDispenserController(LOG_INFORMATION, F("FULL"), true);
+	if (m_topSwitchState == HIGH) // Top switch is "make on rise"
 		return FULL;
-	}
-	else if (highLevel > 512 && lowLevel > 512)
-	{
-		if (m_sendRawValues)
-			SendMessageToDispenserController(LOG_INFORMATION, F("EMPTY"), true);
+	else if (m_bottomSwitchState == HIGH) // Bottom switch is "break on rise"
 		return EMPTY;
-	}
-	else // if (highLevel > 512 && lowLevel < 512)
-	{
-		if (m_sendRawValues)
-			SendMessageToDispenserController(LOG_INFORMATION, F("ADEQUATE"), true);
+	else
 		return ADEQUATE;
-	}
 }
 
 // Do an flush cycle if it's time, or user requested it
@@ -711,8 +656,7 @@ void DoFlushCycle(bool manual)
 }
 
 // Send: Inlet Relay Pin State, Outlet Relay Pin State, Send Water Level Readings State, Send Fast Water Level Readings State, Flush Period,
-//       Low Level Mark, High Level Mark, Auto Flush Hour, Auto Flush Minute, Read Interval, Do Flush State,
-//		 Send Raw Values State, IP, DNS and Gateway addresses
+//       Auto Flush Hour, Auto Flush Minute, IP, DNS and Gateway addresses
 void InitialiseController()
 {
 	int inletRelayPinState = digitalRead(INLET_RELAY_PIN);
@@ -730,10 +674,6 @@ void InitialiseController()
 	msg.concat(m_autoFlushHour);
 	msg.concat(",");
 	msg.concat(m_autoFlushMinute);
-	msg.concat(",");
-	msg.concat(m_readInterval);
-	msg.concat(",");
-	msg.concat((m_sendRawValues) ? "1" : "0");
 	msg.concat(",");
 	msg.concat(m_ipStr);
 	msg.concat(",");
@@ -1049,45 +989,6 @@ void SetAutoFlushMinute(String data)
 		SendMessageToDispenserController(LOG_ERROR, m_noDataErrorMsg, true);
 }
 
-// Set the water level read interval
-void SetWaterLevelReadInterval(String data)
-{
-	String msg = "";
-
-	// Sets the auto flush minute
-	if (data != "")
-	{
-		// Set the water level read interval
-		m_readInterval = data.toInt();
-		msg = F("Water level read interval set to: ");
-		msg.concat(m_readInterval);
-#if SAVE_CONFIG_EEPROM
-		WriteValuesToEEPROM();
-#endif
-		SendMessageToDispenserController(LOG_INFORMATION, msg, true);
-	}
-	else
-		SendMessageToDispenserController(LOG_ERROR, m_noDataErrorMsg, true);
-}
-
-// Set whether we should send raw analog pin values
-void SetSendRawValueState(String data)
-{
-	String msg = "";
-
-	// Sets the 'send raw values' state
-	if (data != "")
-	{
-		// Sets the 'send raw values' state
-		m_sendRawValues = data.toInt();
-#if SAVE_CONFIG_EEPROM
-		WriteValuesToEEPROM();
-#endif
-	}
-	else
-		SendMessageToDispenserController(LOG_ERROR, m_noDataErrorMsg, true);
-}
-
 // Set the new IP, DNS and GATEWAY addresses and reset the Arduino
 void SetNewIPAndReset(String data)
 {
@@ -1225,8 +1126,6 @@ void WriteValuesToEEPROM()
 	persistedValues.flushPeriod = m_flushPeriod;
 	persistedValues.autoFlushHour = m_autoFlushHour;
 	persistedValues.autoFlushMinute = m_autoFlushMinute;
-	persistedValues.readInterval = m_readInterval;
-	persistedValues.sendRawValues = m_sendRawValues;
 	PrintConfigValues(persistedValues);
 	EEPROM.put(0, persistedValues);
 }
@@ -1252,10 +1151,6 @@ void PrintConfigValues(PersistedValues persistedValues)
 	Serial.println(String(persistedValues.autoFlushHour));
 	Serial.print(F("    Auto Flush Minute: "));
 	Serial.println(String(persistedValues.autoFlushMinute));
-	Serial.print(F("    Read Interval: "));
-	Serial.println(String(persistedValues.readInterval));
-	Serial.print(F("    Send Raw Values?: "));
-	Serial.println(String(persistedValues.sendRawValues));
 }
 
 // Print out the IP address from a byte array to the Serial port
@@ -1309,8 +1204,6 @@ void ReadValuesFromEEPROM()
 		m_flushPeriod = persistedValues.flushPeriod;
 		m_autoFlushHour = persistedValues.autoFlushHour;
 		m_autoFlushMinute = persistedValues.autoFlushMinute;
-		m_readInterval = persistedValues.readInterval;
-		m_sendRawValues = persistedValues.sendRawValues;
 	}
 	else
 	{

@@ -33,7 +33,7 @@ namespace DispenserController
         private void Properties_FormClosing(object sender, FormClosingEventArgs e)
         {
             e.Cancel = true;
-            Hide();
+            Visible = false;
         }
 
         private void LogMessage(string message, LogLevel level)
@@ -82,28 +82,6 @@ namespace DispenserController
                     ArduinoPort?.WriteLine($"{(int)DogDispenserController.ArduinoCommands.SEND_FAST_LEVEL_READINGS}:{(checkFastReadings.Checked ? "1" : "0")}");
                 else
                     SendTCPMsgToArduino($"{(int)DogDispenserController.ArduinoCommands.SEND_FAST_LEVEL_READINGS}:{(checkFastReadings.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void checkSendRawValues_CheckedChanged(object sender, EventArgs e)
-        {
-            if (!Initialising)
-            {
-                if (m_usingSerial)
-                    ArduinoPort?.WriteLine($"{(int)DogDispenserController.ArduinoCommands.SEND_RAW_VALUES}:{(checkSendRawValues.Checked ? "1" : "0")}");
-                else
-                    SendTCPMsgToArduino($"{(int)DogDispenserController.ArduinoCommands.SEND_RAW_VALUES}:{(checkSendRawValues.Checked ? "1" : "0")}");
-            }
-        }
-
-        private void numericReadInterval_ValueChanged(object sender, EventArgs e)
-        {
-            if (!Initialising)
-            {
-                if (m_usingSerial)
-                    ArduinoPort?.WriteLine($"{(int)DogDispenserController.ArduinoCommands.WATER_LEVEL_READ_SENSOR_INTERVAL}:{numericReadInterval.Value * 1000}");
-                else
-                    SendTCPMsgToArduino($"{(int)DogDispenserController.ArduinoCommands.WATER_LEVEL_READ_SENSOR_INTERVAL}:{numericReadInterval.Value * 1000}");
             }
         }
 
@@ -235,6 +213,11 @@ namespace DispenserController
                 m_resetInProgress = false;
                 buttonResetNow.Text = "Reset Arduino";
             }
+        }
+
+        private void buttonClose_Click(object sender, EventArgs e)
+        {
+            Visible = false;
         }
     }
 }

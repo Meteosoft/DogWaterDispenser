@@ -14,6 +14,7 @@
 #define _VSARDUINO_H_
 #define __AVR_ATmega328p__
 #define __AVR_ATmega328P__
+#define _VMDEBUG 1
 #define F_CPU 16000000L
 #define ARDUINO 106011
 #define ARDUINO_AVR_UNO
@@ -62,7 +63,7 @@ typedef void *__builtin_va_list;
 
 
 
-#include <arduino.h>
+#include <Arduino.h>
 #include <pins_arduino.h> 
 #undef F
 #define F(string_literal) ((const PROGMEM char *)(string_literal))

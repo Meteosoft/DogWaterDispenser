@@ -41,28 +41,23 @@
             this.toolStripLedBulbOutlet = new DispenserController.ToolStripLedBulb();
             this.toolStripStatusLabelDateTime = new System.Windows.Forms.ToolStripStatusLabel();
             this.splitContainerWhole = new System.Windows.Forms.SplitContainer();
-            this.splitContainerLeft = new System.Windows.Forms.SplitContainer();
             this.panel = new System.Windows.Forms.Panel();
             this.buttonSettings = new System.Windows.Forms.Button();
             this.labelCurrentLevel = new System.Windows.Forms.Label();
             this.labelCurrentLevelLabel = new System.Windows.Forms.Label();
-            this.panel1 = new System.Windows.Forms.Panel();
             this.statusStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainerWhole)).BeginInit();
             this.splitContainerWhole.Panel1.SuspendLayout();
             this.splitContainerWhole.Panel2.SuspendLayout();
             this.splitContainerWhole.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainerLeft)).BeginInit();
-            this.splitContainerLeft.Panel1.SuspendLayout();
-            this.splitContainerLeft.Panel2.SuspendLayout();
-            this.splitContainerLeft.SuspendLayout();
             this.panel.SuspendLayout();
-            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // zedGraphDispenserLevel
             // 
-            this.zedGraphDispenserLevel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.zedGraphDispenserLevel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.zedGraphDispenserLevel.Location = new System.Drawing.Point(0, 0);
             this.zedGraphDispenserLevel.Name = "zedGraphDispenserLevel";
             this.zedGraphDispenserLevel.ScrollGrace = 0D;
@@ -72,7 +67,7 @@
             this.zedGraphDispenserLevel.ScrollMinX = 0D;
             this.zedGraphDispenserLevel.ScrollMinY = 0D;
             this.zedGraphDispenserLevel.ScrollMinY2 = 0D;
-            this.zedGraphDispenserLevel.Size = new System.Drawing.Size(508, 402);
+            this.zedGraphDispenserLevel.Size = new System.Drawing.Size(383, 207);
             this.zedGraphDispenserLevel.TabIndex = 0;
             // 
             // logMessageView
@@ -83,7 +78,7 @@
             this.logMessageView.Location = new System.Drawing.Point(0, 0);
             this.logMessageView.MaxLogLines = 2000;
             this.logMessageView.Name = "logMessageView";
-            this.logMessageView.Size = new System.Drawing.Size(443, 436);
+            this.logMessageView.Size = new System.Drawing.Size(383, 206);
             this.logMessageView.TabIndex = 0;
             // 
             // statusStrip
@@ -98,7 +93,7 @@
             this.toolStripStatusLabelDateTime});
             this.statusStrip.Location = new System.Drawing.Point(0, 449);
             this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(969, 27);
+            this.statusStrip.Size = new System.Drawing.Size(383, 27);
             this.statusStrip.TabIndex = 0;
             this.statusStrip.Text = "StatusBar";
             // 
@@ -145,64 +140,47 @@
             // 
             this.toolStripStatusLabelDateTime.Name = "toolStripStatusLabelDateTime";
             this.toolStripStatusLabelDateTime.RightToLeftAutoMirrorImage = true;
-            this.toolStripStatusLabelDateTime.Size = new System.Drawing.Size(716, 22);
+            this.toolStripStatusLabelDateTime.Size = new System.Drawing.Size(130, 22);
             this.toolStripStatusLabelDateTime.Spring = true;
             this.toolStripStatusLabelDateTime.Text = "DateTime";
             this.toolStripStatusLabelDateTime.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // splitContainerWhole
             // 
-            this.splitContainerWhole.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.splitContainerWhole.BackColor = System.Drawing.Color.Transparent;
-            this.splitContainerWhole.Location = new System.Drawing.Point(8, 8);
+            this.splitContainerWhole.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainerWhole.Location = new System.Drawing.Point(0, 0);
             this.splitContainerWhole.Name = "splitContainerWhole";
+            this.splitContainerWhole.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
             // splitContainerWhole.Panel1
             // 
-            this.splitContainerWhole.Panel1.Controls.Add(this.splitContainerLeft);
+            this.splitContainerWhole.Panel1.Controls.Add(this.logMessageView);
             // 
             // splitContainerWhole.Panel2
             // 
-            this.splitContainerWhole.Panel2.Controls.Add(this.panel1);
-            this.splitContainerWhole.Size = new System.Drawing.Size(957, 438);
-            this.splitContainerWhole.SplitterDistance = 508;
-            this.splitContainerWhole.TabIndex = 3;
-            // 
-            // splitContainerLeft
-            // 
-            this.splitContainerLeft.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainerLeft.Location = new System.Drawing.Point(0, 0);
-            this.splitContainerLeft.Name = "splitContainerLeft";
-            this.splitContainerLeft.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            // 
-            // splitContainerLeft.Panel1
-            // 
-            this.splitContainerLeft.Panel1.Controls.Add(this.zedGraphDispenserLevel);
-            // 
-            // splitContainerLeft.Panel2
-            // 
-            this.splitContainerLeft.Panel2.Controls.Add(this.panel);
-            this.splitContainerLeft.Size = new System.Drawing.Size(508, 438);
-            this.splitContainerLeft.SplitterDistance = 402;
-            this.splitContainerLeft.TabIndex = 0;
+            this.splitContainerWhole.Panel2.Controls.Add(this.panel);
+            this.splitContainerWhole.Size = new System.Drawing.Size(383, 449);
+            this.splitContainerWhole.SplitterDistance = 206;
+            this.splitContainerWhole.TabIndex = 0;
             // 
             // panel
             // 
             this.panel.BackColor = System.Drawing.Color.Transparent;
             this.panel.Controls.Add(this.buttonSettings);
             this.panel.Controls.Add(this.labelCurrentLevel);
+            this.panel.Controls.Add(this.zedGraphDispenserLevel);
             this.panel.Controls.Add(this.labelCurrentLevelLabel);
             this.panel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel.Location = new System.Drawing.Point(0, 0);
             this.panel.Name = "panel";
-            this.panel.Size = new System.Drawing.Size(508, 32);
+            this.panel.Size = new System.Drawing.Size(383, 239);
             this.panel.TabIndex = 0;
             // 
             // buttonSettings
             // 
-            this.buttonSettings.Location = new System.Drawing.Point(422, 4);
+            this.buttonSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonSettings.Location = new System.Drawing.Point(305, 211);
             this.buttonSettings.Name = "buttonSettings";
             this.buttonSettings.Size = new System.Drawing.Size(75, 23);
             this.buttonSettings.TabIndex = 28;
@@ -212,9 +190,10 @@
             // 
             // labelCurrentLevel
             // 
+            this.labelCurrentLevel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.labelCurrentLevel.AutoSize = true;
             this.labelCurrentLevel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelCurrentLevel.Location = new System.Drawing.Point(78, 8);
+            this.labelCurrentLevel.Location = new System.Drawing.Point(77, 216);
             this.labelCurrentLevel.Name = "labelCurrentLevel";
             this.labelCurrentLevel.Size = new System.Drawing.Size(32, 16);
             this.labelCurrentLevel.TabIndex = 26;
@@ -222,34 +201,24 @@
             // 
             // labelCurrentLevelLabel
             // 
+            this.labelCurrentLevelLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.labelCurrentLevelLabel.AutoSize = true;
-            this.labelCurrentLevelLabel.Location = new System.Drawing.Point(6, 9);
+            this.labelCurrentLevelLabel.Location = new System.Drawing.Point(3, 217);
             this.labelCurrentLevelLabel.Name = "labelCurrentLevelLabel";
             this.labelCurrentLevelLabel.Size = new System.Drawing.Size(73, 13);
             this.labelCurrentLevelLabel.TabIndex = 24;
             this.labelCurrentLevelLabel.Text = "Current Level:";
-            // 
-            // panel1
-            // 
-            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.panel1.Controls.Add(this.logMessageView);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(0, 0);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(445, 438);
-            this.panel1.TabIndex = 0;
             // 
             // DogDispenserController
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackgroundImage = global::DispenserController.Properties.Resources.Background;
-            this.ClientSize = new System.Drawing.Size(969, 476);
+            this.ClientSize = new System.Drawing.Size(383, 476);
             this.Controls.Add(this.splitContainerWhole);
             this.Controls.Add(this.statusStrip);
             this.DoubleBuffered = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MinimumSize = new System.Drawing.Size(652, 358);
             this.Name = "DogDispenserController";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Dog Water Dispenser Controller";
@@ -261,13 +230,8 @@
             this.splitContainerWhole.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainerWhole)).EndInit();
             this.splitContainerWhole.ResumeLayout(false);
-            this.splitContainerLeft.Panel1.ResumeLayout(false);
-            this.splitContainerLeft.Panel2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainerLeft)).EndInit();
-            this.splitContainerLeft.ResumeLayout(false);
             this.panel.ResumeLayout(false);
             this.panel.PerformLayout();
-            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -284,13 +248,11 @@
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabelOutlet;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabelDateTime;
         private System.Windows.Forms.SplitContainer splitContainerWhole;
-        private System.Windows.Forms.SplitContainer splitContainerLeft;
         private ToolStripLedBulb toolStripLedBulbInlet;
         private ToolStripLedBulb toolStripLedBulbOutlet;
         private System.Windows.Forms.Label labelCurrentLevel;
         private System.Windows.Forms.Label labelCurrentLevelLabel;
         private System.Windows.Forms.Panel panel;
-        private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Button buttonSettings;
     }
 }
